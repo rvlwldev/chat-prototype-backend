@@ -1,0 +1,5 @@
+/node_modules/
+/messageFiles/
+
+*.log
+*.tmp
