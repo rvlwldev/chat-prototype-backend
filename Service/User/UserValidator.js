@@ -38,7 +38,7 @@ const UserValidateService = {
 
 	checkPublicChannels: async (USER_ID) => {
 		const selectedChannels = await channelQuery.selectPublicChannels();
-		validatePublicChannelsByMap(selectedChannels, USER_ID);
+		await validatePublicChannelsByMap(selectedChannels, USER_ID);
 
 		let ApiChannels = await getPublicChannelsFromExternalAPI().then((res) =>
 			res.map((channel) => {
@@ -56,8 +56,9 @@ const UserValidateService = {
 
 async function validatePublicChannelsByMap(selectedChannels, USER_ID) {
 	for (const [ID, NAME] of PUBLIC_CHANNEL_MAP.entries()) {
-		if (!selectedChannels.find((selectedChannel) => selectedChannel.ID === ID))
+		if (!selectedChannels.find((selectedChannel) => selectedChannel.ID === ID)) {
 			channelQuery.merge(ID, NAME, "super_public", USER_ID);
+		}
 	}
 }
 
@@ -80,7 +81,7 @@ async function getPublicChannelsFromExternalAPI(hasNext = true, channelArray = [
 async function syncronizePublicChannels(API_CHANNELS, DB_CHANNELS, USER_ID) {
 	try {
 		DB_CHANNELS.forEach(async (selectedChannel) => {
-			let isMatched = API_CHANNELS.find((ApiChannel) => ApiChannel.ID === selectedChannel.ID);
+			let isMatched = API_CHANNELS.find((ApiChannel) => ApiChannel.id === selectedChannel.id);
 
 			if (!isMatched) {
 				await exAPI.post("channels/create", {
@@ -95,9 +96,9 @@ async function syncronizePublicChannels(API_CHANNELS, DB_CHANNELS, USER_ID) {
 		});
 
 		API_CHANNELS.forEach(async (ApiChannel) => {
-			let isMatched = API_CHANNELS.find((dbChannel) => dbChannel.ID === ApiChannel.ID);
+			let isMatched = API_CHANNELS.find((dbChannel) => dbChannel.id === ApiChannel.id);
 			if (!isMatched)
-				await channelQuery.merge(ApiChannel.ID, ApiChannel.NAME, ApiChannel.TYPE, USER_ID);
+				await channelQuery.merge(ApiChannel.id, ApiChannel.name, ApiChannel.type, USER_ID);
 		});
 
 		return true;

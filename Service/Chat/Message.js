@@ -75,10 +75,30 @@ const MessageService = {
 	sendFileMessage: async (channelId, request) => {
 		const fileSaveResult = await FILE_HANDLER.saveFile(channelId, request);
 
-		let result = {};
-		for (const key in fileSaveResult.body) result[key] = fileSaveResult.body[key];
+		let body = {
+			senderId: request.body.senderId,
+			type: "text",
+			data: {
+				type: request.body.type,
+				fileName: fileSaveResult.file.fileName,
+				filePath: fileSaveResult.file.filePath,
+				fileSize: request.body.fileSize,
+			},
+		};
 
-		return true;
+		if (fileSaveResult) {
+			return await exAPI
+				.post("channels/" + channelId + "/messages/send", body)
+				.then(async (response) => {
+					await messageQuery.insert(response.message);
+					return response.message;
+				})
+				.catch((err) => {
+					console.log("FILE MESSAGE ERROR");
+					console.error(err);
+				});
+		}
+		return false;
 	},
 };
 

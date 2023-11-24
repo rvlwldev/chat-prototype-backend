@@ -11,10 +11,10 @@ const messageQuery = {
 		const userId = message.userId;
 
 		const text = message.text;
-		const type = message.data?.type ? `'${message.data.type}'` : `'text`;
-		const fileName = message.data?.name ? `'${message.data.name}'` : null;
-		const fileSize = message.data?.size ? `'${message.data.size}'` : null;
-		const filePath = message.data?.path ? `'${message.data.path}'` : null;
+		const type = message.data?.type ? `'${message.data.type}'` : `'text'`;
+		const fileName = message.data?.fileName ? `'${message.data.fileName}'` : null;
+		const fileSize = message.data?.fileSize ? `'${message.data.fileSize}'` : null;
+		const filePath = message.data?.filePath ? `'${message.data.filePath}'` : null;
 
 		const createdAt = message.createdAt;
 

@@ -36,12 +36,12 @@ const saveFile = (directoryPath, request) => {
 				const DOMAIN = `${request.protocol}://${request.get("host")}`;
 				const FILE_INFO = {
 					isUploaded: true,
-					filename: request.file.filename,
-					filePath: `${DOMAIN}/${FILE_STORAGE_ROOT_DIRECTORY}/${directoryPath}/${request.file.filename}`,
+					fileName: request.file.filename,
+					filePath: `${DOMAIN}/${FILE_STORAGE_ROOT_DIRECTORY}${directoryPath}/${request.file.filename}`,
 				};
 
 				let result = request;
-				request.file = FILE_INFO;
+				result.file = FILE_INFO;
 
 				resolve(result);
 			}
