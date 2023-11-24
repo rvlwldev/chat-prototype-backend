@@ -1,5 +1,7 @@
 /node_modules/
 /messageFiles/
+/.vscode/
 
+/Util/ExternalAPI.js
 *.log
 *.tmp
