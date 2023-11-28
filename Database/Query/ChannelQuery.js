@@ -31,13 +31,13 @@ const channelQuery = {
                 type
             )
             VALUES (
-                '${ID}',
-                '${NAME}', 
-                '${TYPE}'
+                ?,
+                ?,
+                ?
             )
             ON DUPLICATE KEY UPDATE
-            name = VALUES(NAME),
-            type = VALUES(TYPE);
+            name = VALUES(name),
+            type = VALUES(type);
         `;
 
 		const USER_CHANNEL_MERGE_QUERY = `
@@ -46,21 +46,25 @@ const channelQuery = {
                 channelId
             )
             VALUES (
-                '${USER_ID}' ,
-                '${ID}'
+                ? ,
+                ?
             )
             ON DUPLICATE KEY UPDATE
             userId = VALUES(userId),
             channelId = VALUES(channelId);
         `;
 
-		let channelInsertResult = await DATABASE.execute(CHANNEL_INSERT_QUERY, DB).then(
-			(res) => res
-		);
+		const channelInsertResult = await DATABASE.execute(
+			CHANNEL_INSERT_QUERY,
+			[ID, NAME, TYPE],
+			DB
+		).then((res) => res);
 
-		let userChannelMergeResult = await DATABASE.execute(USER_CHANNEL_MERGE_QUERY, DB).then(
-			(res) => res
-		);
+		const userChannelMergeResult = await DATABASE.execute(
+			USER_CHANNEL_MERGE_QUERY,
+			[USER_ID, ID],
+			DB
+		).then((res) => res);
 
 		return channelInsertResult && userChannelMergeResult;
 	},

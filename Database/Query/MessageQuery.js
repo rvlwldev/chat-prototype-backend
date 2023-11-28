@@ -19,35 +19,48 @@ const messageQuery = {
 		const createdAt = message.createdAt;
 
 		const QUERY = `
-    INSERT INTO MESSAGE (
-      id,
-      parentMessageId,
-      channelId,
-      userId,
-      text,
-      type,
-      filePath,
-      fileName,
-      fileSize,
-      createdAt
-    ) VALUES (
-      '${messageId}',
-      ${parentMessageId},
-      '${channelId}',
-      '${userId}',
-      '${text}',
-      ${type},
-      ${filePath},
-      ${fileName},
-      ${fileSize},
-      ${createdAt}
-    )
-    ON DUPLICATE KEY UPDATE 
-    text = VALUES(text),
-    parentMessageId = VALUES(parentMessageId);
+      INSERT INTO MESSAGE (
+          id,
+          parentMessageId,
+          channelId,
+          userId,
+          text,
+          type,
+          filePath,
+          fileName,
+          fileSize,
+          createdAt
+      ) VALUES (
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?
+      )
+      ON DUPLICATE KEY UPDATE 
+          text = VALUES(text),
+          parentMessageId = VALUES(parentMessageId);
     `;
 
-		return DATABASE.execute(QUERY, DB);
+		const values = [
+			messageId,
+			parentMessageId,
+			channelId,
+			userId,
+			message.text,
+			type,
+			filePath,
+			fileName,
+			fileSize,
+			createdAt,
+		];
+
+		return DATABASE.execute(QUERY, values, DB);
 	},
 
 	insertAll: async (messages, db = "local") => {

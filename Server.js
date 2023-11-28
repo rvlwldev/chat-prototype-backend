@@ -8,17 +8,20 @@ APP.locals.adminID = "47e2beb243c5bb9c";
 
 const dynamicCors = (origin, callback) => {
 	const allowedOrigins = [
-		"http://211.234.123.19/", // CUG
+		"http://211.234.123.19", // CUG
 		"http://192.168.2.65:8081",
 		"http://172.18.96.1:8081",
 		"http://127.0.0.1:8081",
 		"http://localhost:8081",
 		"http://localhost",
 		"ELECTRON",
+		undefined, // 임시
 	];
 
 	if (allowedOrigins.includes(origin)) callback(null, true);
-	else callback(new Error("Not allowed by CORS"));
+	else {
+		callback(new Error("Not allowed by CORS : " + origin));
+	}
 };
 
 APP.use(
