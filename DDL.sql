@@ -51,6 +51,20 @@ ADD CONSTRAINT `FK_PARENT_MESSAGE_ID`
 FOREIGN KEY (`parentMessageId`)
 REFERENCES `MESSAGE`(`id`);
 
+INSERT INTO chat.`USER` (id,username,profileUserImageUrl,`role`) VALUES
+	 ('44c5a8a4384857c6','강수면','',1),
+	 ('47e2beb243c5bb9c','김형준(전산)','',1),
+	 ('admin01','관리자01',NULL,99),
+	 ('admin02','관리자02',NULL,99),
+	 ('admin03','관리자03',NULL,99),
+	 ('admin04','관리자04',NULL,99),
+	 ('admin05','관리자05',NULL,99),
+	 ('admin06','관리자06',NULL,99),
+	 ('admin07','관리자07',NULL,99),
+	 ('admin08','관리자08',NULL,99);
+INSERT INTO chat.`USER` (id,username,profileUserImageUrl,`role`) VALUES
+	 ('admin09','관리자09',NULL,99),
+	 ('admin10','관리자10',NULL,99);
 
 
  SELECT M.id,
