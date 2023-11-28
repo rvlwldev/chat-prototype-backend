@@ -3,6 +3,5 @@
 /File/message
 /.vscode/
 
-/Util/ExternalAPI.js
 *.log
 *.tmp
