@@ -3,5 +3,7 @@
 /File/message
 /.vscode/
 
+package-lock.json
+
 *.log
 *.tmp
