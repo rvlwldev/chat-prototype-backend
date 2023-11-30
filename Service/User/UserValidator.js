@@ -38,6 +38,7 @@ const UserValidateService = {
 
 	checkPublicChannels: async (USER_ID) => {
 		const selectedChannels = await channelQuery.selectPublicChannels();
+
 		await validatePublicChannelsByMap(selectedChannels, USER_ID);
 
 		let ApiChannels = await getPublicChannelsFromExternalAPI().then((res) =>
@@ -50,9 +51,23 @@ const UserValidateService = {
 			})
 		);
 
+		await validatePublicChannelMember(ApiChannels, USER_ID);
+
 		return syncronizePublicChannels(ApiChannels, selectedChannels, USER_ID);
 	},
 };
+
+async function validatePublicChannelMember(channels, USER_ID) {
+	channels.forEach(async (channel) => {
+		await exAPI
+			.get(`channels/${channel.id}/members`)
+			.then(async (res) => {
+				if (!res.members.find((member) => member.id == USER_ID))
+					await exAPI.post(`channels/${channel.id}/members/add`, { members: [USER_ID] });
+			})
+			.catch((err) => console.log(err));
+	});
+}
 
 async function validatePublicChannelsByMap(selectedChannels, USER_ID) {
 	for (const [ID, NAME] of PUBLIC_CHANNEL_MAP.entries()) {

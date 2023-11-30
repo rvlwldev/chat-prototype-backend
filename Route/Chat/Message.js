@@ -5,6 +5,7 @@ const { HttpStatusCode } = require("axios");
 
 ROUTER.get("/:channelId/messages/", async (req, res) => {
 	const channelId = req.params.channelId;
+
 	let messages = await MessageService.getMessages(channelId);
 
 	res.status(HttpStatusCode.Ok).send(messages);

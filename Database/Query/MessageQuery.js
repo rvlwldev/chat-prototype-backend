@@ -7,44 +7,44 @@ const messageQuery = {
 	insert: async (message, DB = "local") => {
 		const channelId = message.channelId;
 		const messageId = message.id;
-		const parentMessageId = `${message.parentMessageId}` || `null`;
+		const parentMessageId = `${message.parentMessageId}` || null;
 		const userId = message.userId;
 
 		const text = message.text;
-		const type = message.data?.type ? `'${message.data.type}'` : `'text'`;
-		const fileName = message.data?.fileName ? `'${message.data.fileName}'` : null;
-		const fileSize = message.data?.fileSize ? `'${message.data.fileSize}'` : null;
-		const filePath = message.data?.filePath ? `'${message.data.filePath}'` : null;
+		const type = message.data?.type ? `${message.data.type}` : `text`;
+		const fileName = message.data?.fileName ? `${message.data.fileName}` : null;
+		const fileSize = message.data?.fileSize ? `${message.data.fileSize}` : null;
+		const filePath = message.data?.filePath ? `${message.data.filePath}` : null;
 
 		const createdAt = message.createdAt;
 
 		const QUERY = `
       INSERT INTO MESSAGE (
-          id,
-          parentMessageId,
-          channelId,
-          userId,
-          text,
-          type,
-          filePath,
-          fileName,
-          fileSize,
-          createdAt
+        id,
+        parentMessageId,
+        channelId,
+        userId,
+        text,
+        type,
+        filePath,
+        fileName,
+        fileSize,
+        createdAt
       ) VALUES (
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?
       )
-      ON DUPLICATE KEY UPDATE 
-          text = VALUES(text),
-          parentMessageId = VALUES(parentMessageId);
+      ON DUPLICATE KEY UPDATE
+      text = VALUES(text);
+          
     `;
 
 		const values = [
@@ -85,7 +85,8 @@ const messageQuery = {
              M.filePath,
              M.fileName,
              M.fileSize,
-             M.createdAt
+             M.createdAt,
+             CONVERT_TZ(FROM_UNIXTIME(M.createdAt / 1000), 'UTC', 'Asia/Seoul') AS test
         FROM MESSAGE M
         LEFT
        OUTER

@@ -52,6 +52,10 @@ APP.use("/channels", MessageRouter);
 
 APP.get("/", (req, res) => res.send({ connect: true, time: new Date() })); // ping test
 
+APP.get("/File/message/:channelId/:fileName", (req, res) =>
+	res.sendFile(path.join(__dirname, "File", "message", req.params.channelId, req.params.fileName))
+);
+
 const port = process.env.PORT || 3000;
 
 APP.listen(port, () => console.log(`서버가 http://localhost:${port} 포트에서 실행 중입니다.`));

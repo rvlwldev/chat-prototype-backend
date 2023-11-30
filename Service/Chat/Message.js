@@ -4,8 +4,10 @@ const FILE_HANDLER = require("../../Util/FileHandler");
 const ExternalAPI = require("../../Util/ExternalAPI");
 const exAPI = new ExternalAPI();
 
+// TODO : channelId 없으면 예외처리
+// TODO : 잘못된 메세지 아이디 들어오면 예외처리
+// TODO : 메세지 반환 시 자체 limit 제한
 const MessageService = {
-	// TODO : channelId 없으면 예외처리
 	getMessages: async (channelId) => {
 		/** @type Array */
 		let DBmessages = parser.toDTObyQueryResults(await messageQuery.select(channelId));
@@ -19,15 +21,15 @@ const MessageService = {
 			.get(`channels/${channelId}/messages` + queryString)
 			.then((response) => {
 				hasNext = response.hasNext;
+
 				return response.messages;
 			});
 
 		messageQuery.insertAll(APImessages);
 
-		return { messages: DBmessages.concat(APImessages), hasNext: hasNext };
+		return { messages: DBmessages.concat(APImessages), hasNext: false };
 	},
 
-	// TODO : 잘못된 아이디 들어오면 예외처리
 	getMessagesWithLastMessageId: async (channelId, lastMessageId) => {
 		/** @type Array */
 		let lastMessage = await messageQuery.selectById(channelId, lastMessageId);
@@ -40,19 +42,7 @@ const MessageService = {
 			DBmessages = parser.toDTObyQueryResults(DBmessages);
 		}
 
-		let queryString = `?limit=${50}&lastMessageId=${lastMessageId}`;
-
-		let hasNext = false;
-		let APImessages = await exAPI
-			.get(`channels/${channelId}/messages` + queryString)
-			.then((response) => {
-				hasNext = response.hasNext;
-				return response.messages;
-			});
-
-		messageQuery.insertAll(APImessages);
-
-		return { messages: DBmessages.concat(APImessages), hasNext: hasNext };
+		return { messages: DBmessages, hasNext: false };
 	},
 
 	sendTextMessage: async (channelId, senderId, text) => {
@@ -113,6 +103,7 @@ const parser = {
 				profileImageUrl: row.profileImageUrl,
 				text: row.text,
 				createdAt: row.createdAt,
+				test: row.test,
 				data: {
 					type: row.type,
 					filePath: row.filePath,
