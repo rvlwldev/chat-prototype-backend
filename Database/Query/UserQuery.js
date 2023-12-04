@@ -19,12 +19,19 @@ const userQuery = {
 	},
 
 	selectByUserId: async (USER_ID, DB = "local") => {
+		// const QUERY = `
+		//     SELECT jumin_log AS ID,
+		//            p_name    AS NAME
+		//       FROM admin_post_sub
+		//      WHERE LENGTH(jumin_log) > 1
+		//        AND jumin_log = '${USER_ID}'
+		// `;
+
 		const QUERY = `
-            SELECT jumin_log AS ID,
-                   p_name    AS NAME
-              FROM admin_post_sub   
-             WHERE LENGTH(jumin_log) > 1
-               AND jumin_log = '${USER_ID}'
+            SELECT id AS id,
+                   username AS name
+              FROM USER   
+             WHERE ID = '${USER_ID}'
         `;
 
 		return await DATABASE.select(QUERY, DB).then((res) => res);

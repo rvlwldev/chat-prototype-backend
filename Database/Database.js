@@ -27,15 +27,18 @@ const DATABASE = {
 			return true;
 		} catch (error) {
 			console.error("Error executing query:", error);
-			throw false;
+			return false;
 		}
 	},
 
 	select: async (query, db) => {
 		if (!db) db = "local";
-
-		const [rows] = await DATABASE[db].promise().query(query);
-		return rows;
+		try {
+			const [rows] = await DATABASE[db].promise().query(query);
+			return rows;
+		} catch (error) {
+			console.error("Error executing query:", error);
+		}
 	},
 };
 

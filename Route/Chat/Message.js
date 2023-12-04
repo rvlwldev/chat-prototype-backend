@@ -1,14 +1,12 @@
 const ROUTER = require("express").Router();
 
 const MessageService = require("../../Service/Chat/Message");
+
 const { HttpStatusCode } = require("axios");
 
-ROUTER.get("/:channelId/messages/", async (req, res) => {
-	const channelId = req.params.channelId;
-
-	let messages = await MessageService.getMessages(channelId);
-
-	res.status(HttpStatusCode.Ok).send(messages);
+ROUTER.get("/:channelId/messages", async (req, res) => {
+	let messages = await MessageService.getMessages(req.params.channelId);
+	res.status(HttpStatusCode.Ok).send({ messages: messages, hasHistory: false });
 });
 
 ROUTER.get("/:channelId/messages/:lastMessageId", async (req, res) => {

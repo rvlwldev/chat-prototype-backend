@@ -9,25 +9,8 @@ const exAPI = new ExternalAPI();
 // TODO : 메세지 반환 시 자체 limit 제한
 const MessageService = {
 	getMessages: async (channelId) => {
-		/** @type Array */
-		let DBmessages = parser.toDTObyQueryResults(await messageQuery.select(channelId));
-
-		let queryString = `?limit=${50}`;
-		if (DBmessages.length > 0)
-			queryString += `&lastMessageId=${DBmessages[DBmessages.length - 1].id}`;
-
-		let hasNext = false;
-		let APImessages = await exAPI
-			.get(`channels/${channelId}/messages` + queryString)
-			.then((response) => {
-				hasNext = response.hasNext;
-
-				return response.messages;
-			});
-
-		messageQuery.insertAll(APImessages);
-
-		return { messages: DBmessages.concat(APImessages), hasNext: false };
+		return await messageQuery.select(channelId);
+		// return parser.toDTObyQueryResults(await messageQuery.select(channelId));
 	},
 
 	getMessagesWithLastMessageId: async (channelId, lastMessageId) => {
@@ -42,7 +25,7 @@ const MessageService = {
 			DBmessages = parser.toDTObyQueryResults(DBmessages);
 		}
 
-		return { messages: DBmessages, hasNext: false };
+		return DBmessages;
 	},
 
 	sendTextMessage: async (channelId, senderId, text) => {

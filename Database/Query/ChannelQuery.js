@@ -3,9 +3,26 @@ const DATABASE = require("../Database");
 const channelQuery = {
 	selectChannelsByUserId: async (userId, DB = "local") => {
 		const QUERY = `
-            SELECT channelId
-              FROM USER_CHANNEL
-             WHERE userId = '${userId}'
+            SELECT C.id
+                  ,C.name 
+                  ,C.type
+              FROM USER_CHANNEL UC
+             INNER 
+              JOIN CHANNEL C
+                ON UC.channelId = C.id 
+             WHERE UC.userId = '${userId}'
+        `;
+
+		return await DATABASE.select(QUERY, DB).then((res) => res);
+	},
+
+	selectChannel: async (channelId, DB = "local") => {
+		const QUERY = `
+            SELECT C.id
+                  ,C.name 
+                  ,C.type
+              FROM CHANNEL C                
+             WHERE C.id = '${channelId}'
         `;
 
 		return await DATABASE.select(QUERY, DB).then((res) => res);
@@ -23,7 +40,21 @@ const channelQuery = {
 		return await DATABASE.select(QUERY, DB).then((res) => res);
 	},
 
-	merge: async (ID, NAME, TYPE, USER_ID, DB = "local") => {
+	countAllPublicChannelsWithUserId: async (userId, DB = "local") => {
+		const QUERY = `
+            SELECT COUNT(1) AS count
+              FROM USER_CHANNEL UC
+             INNER 
+              JOIN CHANNEL C
+                ON UC.CHANNELID = C.ID 
+               AND C.TYPE= 'SUPER_PUBLIC'
+               AND UC.USERID = '${userId}'
+        `;
+
+		return await DATABASE.select(QUERY, DB).then((res) => res[0]);
+	},
+
+	mergeUserChannels: async (ID, NAME, TYPE, USER_ID, DB = "local") => {
 		const CHANNEL_INSERT_QUERY = `
             INSERT INTO CHANNEL (
                 id,

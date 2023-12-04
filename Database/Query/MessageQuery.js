@@ -93,7 +93,7 @@ const messageQuery = {
         JOIN USER U
           ON M.userId = U.id
        WHERE M.channelId = '${channelId}'
-       ORDER BY M.createdAt DESC
+       ORDER BY M.createdAt ASC
     `;
 
 		return await DATABASE.select(QUERY, db);

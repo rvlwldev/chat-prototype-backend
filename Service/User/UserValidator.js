@@ -11,116 +11,57 @@ const PUBLIC_CHANNEL_MAP = new Map([
 	["FIRST_TEST_OPEN_CHAT_CHANNEL03", "테스트 전체 공개 채팅방03"],
 ]);
 
-const UserValidateService = {
-	checkUserInfo: async (USER_ID) => {
-		const USERINFO = await exAPI
-			.get(`users/${USER_ID}`)
-			.then((response) => response.user)
-			.catch((err) => {
-				if (err.code == "3003") return null;
-			});
+const UserService = {
+	validateUserById: async (userId) => {
+		try {
+			let userinfo = await userQuery.selectByUserId(userId).then((result) => result[0]);
 
-		if (!USERINFO) {
-			let selectedUserInfo = await userQuery.selectByUserId(USER_ID, "cupg")[0];
-			if (!selectedUserInfo) return false;
+			await exAPI
+				.get(`users/${userId}`)
+				.then((response) => response.user)
+				.catch(async (err) => {
+					console.log(err);
+					if (err.code == "3003")
+						return UserService.createUserOnExAPI(userId, userinfo.name);
+					else throw new Error("talkplus error");
+				});
 
-			await exAPI.post("users/create", {
-				userId: USER_ID,
-				password: USER_ID,
-				username: selectedUserInfo.name,
-			});
+			await UserService.checkUserOnPublicChannels(userId);
+			await UserService.joinPublicChannels(userId);
+
+			return true;
+		} catch (err) {
+			console.log(err);
 		}
-
-		await userQuery.insert(USERINFO);
-
-		return true;
 	},
 
-	checkPublicChannels: async (USER_ID) => {
-		const selectedChannels = await channelQuery.selectPublicChannels();
+	createAndGetUserOnExAPI: async (userId, username) => {
+		await exAPI
+			.post("users/create", { userId: userId, password: userId, username: username })
+			.then((response) => response.user);
+	},
 
-		await validatePublicChannelsByMap(selectedChannels, USER_ID);
+	checkUserOnPublicChannels: async (userId) => {
+		let count = await channelQuery.countAllPublicChannelsWithUserId(userId);
+		if (count == PUBLIC_CHANNEL_MAP.keys.length) return true;
 
-		let ApiChannels = await getPublicChannelsFromExternalAPI().then((res) =>
-			res.map((channel) => {
-				return {
-					id: channel.id,
-					name: channel.name,
-					type: channel.type,
-				};
-			})
-		);
+		try {
+			for (const [ID, NAME] of PUBLIC_CHANNEL_MAP.entries())
+				channelQuery.mergeUserChannels(ID, NAME, "super_public", userId);
 
-		await validatePublicChannelMember(ApiChannels, USER_ID);
+			return true;
+		} catch (err) {
+			throw new Error(err.message);
+		}
+	},
 
-		return syncronizePublicChannels(ApiChannels, selectedChannels, USER_ID);
+	joinPublicChannels: async (userId) => {
+		for (const [ID, NAME] of PUBLIC_CHANNEL_MAP.entries()) {
+			await exAPI.post(`channels/${ID}/members/add`, { members: [userId] }).catch((err) => {
+				throw new Error(err.message);
+			});
+		}
 	},
 };
 
-async function validatePublicChannelMember(channels, USER_ID) {
-	channels.forEach(async (channel) => {
-		await exAPI
-			.get(`channels/${channel.id}/members`)
-			.then(async (res) => {
-				if (!res.members.find((member) => member.id == USER_ID))
-					await exAPI.post(`channels/${channel.id}/members/add`, { members: [USER_ID] });
-			})
-			.catch((err) => console.log(err));
-	});
-}
-
-async function validatePublicChannelsByMap(selectedChannels, USER_ID) {
-	for (const [ID, NAME] of PUBLIC_CHANNEL_MAP.entries()) {
-		if (!selectedChannels.find((selectedChannel) => selectedChannel.ID === ID)) {
-			channelQuery.merge(ID, NAME, "super_public", USER_ID);
-		}
-	}
-}
-
-async function getPublicChannelsFromExternalAPI(hasNext = true, channelArray = [], lastChannelId) {
-	if (!hasNext) return channelArray;
-
-	let requestURL = "channels?limit=100&category=super_public";
-	if (lastChannelId) requestURL += `&lastChannelId=${lastChannelId}`;
-
-	let response = await exAPI.get(requestURL).then((response) => response);
-	let channels = response.channels;
-
-	channelArray.push(...channels);
-
-	if (channels.length > 0) lastChannelId = channels[channels.length - 1].id;
-
-	return getPublicChannelsFromExternalAPI(response.hasNext, channelArray, lastChannelId);
-}
-
-async function syncronizePublicChannels(API_CHANNELS, DB_CHANNELS, USER_ID) {
-	try {
-		DB_CHANNELS.forEach(async (selectedChannel) => {
-			let isMatched = API_CHANNELS.find((ApiChannel) => ApiChannel.id === selectedChannel.id);
-
-			if (!isMatched) {
-				await exAPI.post("channels/create", {
-					channelId: selectedChannel.id,
-					name: selectedChannel.name,
-					type: "super_public",
-					category: "super_public",
-					ownerId: ADMIN_ID,
-					members: [USER_ID],
-				});
-			}
-		});
-
-		API_CHANNELS.forEach(async (ApiChannel) => {
-			let isMatched = API_CHANNELS.find((dbChannel) => dbChannel.id === ApiChannel.id);
-			if (!isMatched)
-				await channelQuery.merge(ApiChannel.id, ApiChannel.name, ApiChannel.type, USER_ID);
-		});
-
-		return true;
-	} catch (err) {
-		console.log(err);
-		return false;
-	}
-}
-
-module.exports = UserValidateService;
+module.exports = UserService;

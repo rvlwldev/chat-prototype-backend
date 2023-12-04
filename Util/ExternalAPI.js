@@ -28,7 +28,7 @@ class ExternalAPI {
 
 			return response.data;
 		} catch (err) {
-			throw err.response.data;
+			return err.response.data;
 		}
 	}
 
@@ -41,7 +41,7 @@ class ExternalAPI {
 
 			return response.data;
 		} catch (err) {
-			throw err.response.data;
+			return err.response.data;
 		}
 	}
 
@@ -54,7 +54,7 @@ class ExternalAPI {
 
 			return response.data;
 		} catch (err) {
-			throw err.response.data;
+			return err.response.data;
 		}
 	}
 
@@ -67,7 +67,7 @@ class ExternalAPI {
 
 			return response.data;
 		} catch (err) {
-			throw err.response.data;
+			return err.response.data;
 		}
 	}
 
@@ -80,7 +80,7 @@ class ExternalAPI {
 
 			return response.data;
 		} catch (err) {
-			throw err.response.data;
+			return err.response.data;
 		}
 	}
 }
