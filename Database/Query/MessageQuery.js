@@ -5,18 +5,18 @@ const DATABASE = require("../Database");
 
 const messageQuery = {
 	insert: async (message, DB = "local") => {
-		const channelId = message.channelId;
-		const messageId = message.id;
-		const parentMessageId = `${message.parentMessageId}` || null;
-		const userId = message.userId;
-
-		const text = message.text;
-		const type = message.data?.type ? `${message.data.type}` : `text`;
-		const fileName = message.data?.fileName ? `${message.data.fileName}` : null;
-		const fileSize = message.data?.fileSize ? `${message.data.fileSize}` : null;
-		const filePath = message.data?.filePath ? `${message.data.filePath}` : null;
-
-		const createdAt = message.createdAt;
+		const {
+			id,
+			parentMessageId = null,
+			channelId,
+			userId,
+			text = null,
+			type,
+			filePath = null,
+			fileName = null,
+			fileSize = null,
+			createdAt,
+		} = message;
 
 		const QUERY = `
       INSERT INTO MESSAGE (
@@ -30,29 +30,17 @@ const messageQuery = {
         fileName,
         fileSize,
         createdAt
-      ) VALUES (
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?,
-        ?
-      )
+      ) VALUES ( ?,?,?,?,?,?,?,?,?,? )
       ON DUPLICATE KEY UPDATE
-      text = VALUES(text);
-          
+        text = VALUES(text);  
     `;
 
 		const values = [
-			messageId,
+			id,
 			parentMessageId,
 			channelId,
 			userId,
-			message.text,
+			text,
 			type,
 			filePath,
 			fileName,
@@ -72,7 +60,7 @@ const messageQuery = {
 		return results;
 	},
 
-	select: async (channelId, db = "local") => {
+	select: async (channelId, limit, db = "local") => {
 		const QUERY = `
       SELECT M.id,
              M.parentMessageId,
@@ -93,13 +81,24 @@ const messageQuery = {
         JOIN USER U
           ON M.userId = U.id
        WHERE M.channelId = '${channelId}'
-       ORDER BY M.createdAt ASC
+       ORDER BY M.createdAt DESC
+       LIMIT ${limit}
     `;
 
 		return await DATABASE.select(QUERY, db);
 	},
 
-	selectById: async (channelId, id, db = "local") => {
+	selectCount: async (channelId, db = "local") => {
+		const QUERY = `
+      SELECT COUNT(1) AS count
+        FROM MESSAGE M 
+       WHERE M.channelId = '${channelId}'
+    `;
+
+		return await DATABASE.select(QUERY, db);
+	},
+
+	selectByIds: async (channelId, messageId, db = "local") => {
 		const QUERY = `
       SELECT M.id,
              M.parentMessageId,
@@ -119,14 +118,13 @@ const messageQuery = {
         JOIN USER U
           ON M.userId = U.id
        WHERE M.channelId = '${channelId}'
-         AND M.id = '${id}'
-       ORDER BY M.createdAt DESC
+         AND M.id = '${messageId}'
     `;
 
 		return await DATABASE.select(QUERY, db);
 	},
 
-	selectAfterCreatedAt: async (channelId, lastCreatedAt, db = "local") => {
+	selectAfterCreatedAt: async (channelId, lastCreatedAt, limit, db = "local") => {
 		const QUERY = `
       SELECT M.id,
              M.parentMessageId,
@@ -148,6 +146,18 @@ const messageQuery = {
        WHERE M.channelId = '${channelId}'
          AND M.createdAt > ${lastCreatedAt}
        ORDER BY M.createdAt DESC
+       LIMIT ${limit}
+    `;
+
+		return await DATABASE.select(QUERY, db);
+	},
+
+	selectCountAfterCreatedAt: async (channelId, lastCreatedAt, db = "local") => {
+		const QUERY = `
+      SELECT COUNT(1) AS count
+        FROM MESSAGE M
+       WHERE M.channelId = '${channelId}'
+         AND M.createdAt > ${lastCreatedAt}
     `;
 
 		return await DATABASE.select(QUERY, db);
