@@ -1,6 +1,7 @@
 const MULTER = require("multer");
 const FS = require("fs");
 const _PATH = require("path");
+const ICONV = require("iconv-lite");
 
 const FILE_STORAGE_ROOT_DIRECTORY = "File/message/";
 
@@ -15,7 +16,8 @@ const saveFile = (directoryPath, request) => {
 			},
 
 			filename: function (req, file, callback) {
-				const fileName = file.originalname;
+				let buffer = Buffer.from(file.originalname, "utf-8");
+				const fileName = ICONV.encode(buffer, "ISO-8859-1").toString();
 
 				const validatedName = validateAndConvertFileName(
 					_PATH.join(`${FILE_STORAGE_ROOT_DIRECTORY}${req.params.channelId}`),
