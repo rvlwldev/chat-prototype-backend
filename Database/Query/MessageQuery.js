@@ -95,7 +95,8 @@ const messageQuery = {
        WHERE M.channelId = '${channelId}'
     `;
 
-		return await DATABASE.select(QUERY, db);
+		let result = await DATABASE.select(QUERY, db);
+		return result[0].count;
 	},
 
 	selectByIds: async (channelId, messageId, db = "local") => {
@@ -124,7 +125,7 @@ const messageQuery = {
 		return await DATABASE.select(QUERY, db);
 	},
 
-	selectAfterCreatedAt: async (channelId, lastCreatedAt, limit, db = "local") => {
+	selectBeforeByCreatedAt: async (channelId, lastCreatedAt, limit, db = "local") => {
 		const QUERY = `
       SELECT M.id,
              M.parentMessageId,
@@ -144,7 +145,7 @@ const messageQuery = {
         JOIN USER U
           ON M.userId = U.id
        WHERE M.channelId = '${channelId}'
-         AND M.createdAt > ${lastCreatedAt}
+         AND M.createdAt < ${lastCreatedAt}
        ORDER BY M.createdAt DESC
        LIMIT ${limit}
     `;
@@ -152,15 +153,17 @@ const messageQuery = {
 		return await DATABASE.select(QUERY, db);
 	},
 
-	selectCountAfterCreatedAt: async (channelId, lastCreatedAt, db = "local") => {
+	selectCountBeforeCreatedAt: async (channelId, lastCreatedAt, db = "local") => {
 		const QUERY = `
       SELECT COUNT(1) AS count
         FROM MESSAGE M
        WHERE M.channelId = '${channelId}'
-         AND M.createdAt > ${lastCreatedAt}
+         AND M.createdAt < ${lastCreatedAt}
     `;
 
-		return await DATABASE.select(QUERY, db);
+		let result = await DATABASE.select(QUERY, db);
+
+		return result[0].count;
 	},
 };
 

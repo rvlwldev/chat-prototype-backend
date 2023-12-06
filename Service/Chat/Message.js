@@ -4,7 +4,7 @@ const FILE_HANDLER = require("../../Util/FileHandler");
 const ExternalAPI = require("../../Util/ExternalAPI");
 const exAPI = new ExternalAPI();
 
-const MESSAGE_LOAD_LIMIT_COUNT = 100;
+const MESSAGE_LOAD_LIMIT_COUNT = 50;
 
 // TODO : channelId 없으면 예외처리
 // TODO : 잘못된 메세지 아이디 들어오면 예외처리
@@ -13,18 +13,9 @@ const MessageService = {
 		let messages;
 		let count;
 
-		if (lastMessageId) {
-			let lastMessage = await messageQuery.selectByIds(channelId, lastMessageId);
-			let lastCreatedAt = lastMessage[0].createdAt;
-
-			messages = await messageQuery.selectAfterCreatedAt(
-				channelId,
-				lastCreatedAt,
-				MESSAGE_LOAD_LIMIT_COUNT
-			);
-
-			count = await messageQuery.selectCountAfterCreatedAt(channelId, lastCreatedAt);
-		} else {
+		if (lastMessageId)
+			return MessageService.getMessagesWithLastMessageId(channelId, lastMessageId);
+		else {
 			messages = await messageQuery.select(channelId, MESSAGE_LOAD_LIMIT_COUNT);
 			count = await messageQuery.selectCount(channelId);
 		}
@@ -50,13 +41,13 @@ const MessageService = {
 
 		const lastCreatedAt = lastMessage[0].createdAt;
 
-		const messages = await messageQuery.selectAfterCreatedAt(
+		const messages = await messageQuery.selectBeforeByCreatedAt(
 			channelId,
 			lastCreatedAt,
 			MESSAGE_LOAD_LIMIT_COUNT
 		);
 
-		let count = await messageQuery.selectCountAfterCreatedAt(channelId, lastCreatedAt);
+		let count = await messageQuery.selectCountBeforeCreatedAt(channelId, lastCreatedAt);
 
 		return { messages: messages, hasHistory: messages.length < count };
 	},
@@ -91,17 +82,10 @@ const MessageService = {
 		const { file } = await FILE_HANDLER.saveFile(channelId, request);
 		const { fileType, fileName, filePath, fileSize } = file;
 
-		let data = {
-			type: fileType,
-			fileName: fileName,
-			filePath: filePath,
-			fileSize: String(fileSize),
-		};
-
 		let exAPIbody = {
 			senderId: request.body.senderId,
 			type: "text",
-			data: data,
+			data: { type: fileType },
 		};
 
 		if (file.isUploaded) {
