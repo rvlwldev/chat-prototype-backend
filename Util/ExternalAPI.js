@@ -4,8 +4,6 @@ class ExternalAPI {
 	#url;
 	#commonHeader;
 
-	#adminID;
-
 	constructor(baseUrl) {
 		if (baseUrl) this.#url = baseUrl;
 		else this.#url = "https://api.talkplus.io/v1.4/api/";
@@ -15,8 +13,6 @@ class ExternalAPI {
 			"app-id ": "7033fa01-881d-46e5-8ed2-63c472d83a89",
 			"api-key": "bd6739468ceaf08797fdea8852a7a3c0da68b13735b94ef2b7c3a9929cd89716",
 		};
-
-		this.#adminID = "47e2beb243c5bb9c";
 	}
 
 	async get(url, body = {}) {

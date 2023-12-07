@@ -7,8 +7,6 @@ const path = require("path");
 
 const APP = express();
 
-APP.locals.adminID = "47e2beb243c5bb9c";
-
 const sessionStore = new MySQLStore({
 	host: "localhost",
 	port: "3306",
@@ -37,14 +35,21 @@ APP.use(
 
 const dynamicCORS = (origin, callback) => {
 	const allowedOrigins = [
-		"http://211.234.123.19", // CUG
+		// CUG
+		"http://211.234.123.19",
+
+		// locals
 		"http://192.168.2.65:8081",
 		"http://172.18.96.1:8081",
 		"http://127.0.0.1:8081",
 		"http://localhost:8081",
 		"http://localhost",
+
+		// nativeApp
 		"ELECTRON",
-		undefined, // 임시
+
+		// 임시
+		undefined,
 	];
 
 	if (allowedOrigins.includes(origin)) callback(null, true);

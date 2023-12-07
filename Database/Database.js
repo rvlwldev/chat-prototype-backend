@@ -23,7 +23,7 @@ const DATABASE = {
 		if (!db) db = "local";
 
 		try {
-			const [results, fields] = await DATABASE[db].promise().query(query, values);
+			await DATABASE[db].promise().query(query, values);
 			return true;
 		} catch (error) {
 			console.error("Error executing query:", error);
