@@ -1,35 +1,28 @@
 const DATABASE = require("../Database");
 
 const userQuery = {
-	insert: async (USERINFO, DB = "local") => {
+	insert: async (id, username, profileUserImageUrl, DB = "local") => {
 		const QUERY = `
             INSERT INTO USER (
                 id, 
                 username, 
                 profileUserImageUrl
-            ) VALUES (
-                '${USERINFO.id}',
-                '${USERINFO.username}',
-                '${USERINFO.profileImageUrl}'
-            )
-            ON DUPLICATE KEY UPDATE ID = ID; 
+            ) VALUES ( ?, ?, ? )
+            ON DUPLICATE KEY UPDATE 
+                username = ?,
+                profileUserImageUrl = ?;
         `;
 
-		return await DATABASE.execute(QUERY, DB).then((res) => res);
+		const values = [id, username, profileUserImageUrl, username, profileUserImageUrl];
+
+		return await DATABASE.execute(QUERY, values, DB).then((res) => res);
 	},
 
 	selectByUserId: async (USER_ID, DB = "local") => {
-		// const QUERY = `
-		//     SELECT jumin_log AS ID,
-		//            p_name    AS NAME
-		//       FROM admin_post_sub
-		//      WHERE LENGTH(jumin_log) > 1
-		//        AND jumin_log = '${USER_ID}'
-		// `;
-
 		const QUERY = `
             SELECT id AS id,
-                   username AS name
+                   username AS name,
+                   profileUserImageUrl	
               FROM USER   
              WHERE ID = '${USER_ID}'
         `;

@@ -4,7 +4,7 @@ const channelQuery = {
 	selectChannelsByUserId: async (userId, DB = "local") => {
 		const QUERY = `
             SELECT C.id
-                  ,C.name 
+                  ,C.name
                   ,C.type
               FROM USER_CHANNEL UC
              INNER 
@@ -19,43 +19,43 @@ const channelQuery = {
 	selectChannel: async (channelId, DB = "local") => {
 		const QUERY = `
             SELECT C.id
-                  ,C.name 
+                  ,C.name
                   ,C.type
-              FROM CHANNEL C                
+              FROM CHANNEL C
              WHERE C.id = '${channelId}'
         `;
 
 		return await DATABASE.select(QUERY, DB).then((res) => res);
 	},
 
-	selectPublicChannels: async (DB = "local") => {
+	selectSuperPublicChannels: async (DB = "local") => {
 		const QUERY = `
             SELECT id,
                    name,
                    type
             FROM CHANNEL
-            WHERE type = 'super_public'
+            WHERE type = 'SUPER_PUBLIC'
             `;
 
 		return await DATABASE.select(QUERY, DB).then((res) => res);
 	},
 
-	countAllPublicChannelsWithUserId: async (userId, DB = "local") => {
+	countUserChannelsByType: async (userId, type, DB = "local") => {
 		const QUERY = `
             SELECT COUNT(1) AS count
               FROM USER_CHANNEL UC
              INNER 
               JOIN CHANNEL C
                 ON UC.CHANNELID = C.ID 
-               AND C.TYPE= 'SUPER_PUBLIC'
+               AND C.TYPE= '${type}'
                AND UC.USERID = '${userId}'
         `;
 
 		return await DATABASE.select(QUERY, DB).then((res) => res[0]);
 	},
 
-	mergeUserChannels: async (ID, NAME, TYPE, USER_ID, DB = "local") => {
-		const CHANNEL_INSERT_QUERY = `
+	mergeChannel: async (ID, NAME, TYPE, DB = "local") => {
+		const QUERY = `
             INSERT INTO CHANNEL (
                 id,
                 name,
@@ -71,7 +71,11 @@ const channelQuery = {
             type = VALUES(type);
         `;
 
-		const USER_CHANNEL_MERGE_QUERY = `
+		return await DATABASE.execute(QUERY, [ID, NAME, TYPE], DB).then((res) => res);
+	},
+
+	mergeUserChannels: async (channelId, userId, DB = "local") => {
+		const QUERY = `
             INSERT INTO USER_CHANNEL (
                 userId,
                 channelId
@@ -85,19 +89,7 @@ const channelQuery = {
             channelId = VALUES(channelId);
         `;
 
-		const channelInsertResult = await DATABASE.execute(
-			CHANNEL_INSERT_QUERY,
-			[ID, NAME, TYPE],
-			DB
-		).then((res) => res);
-
-		const userChannelMergeResult = await DATABASE.execute(
-			USER_CHANNEL_MERGE_QUERY,
-			[USER_ID, ID],
-			DB
-		).then((res) => res);
-
-		return channelInsertResult && userChannelMergeResult;
+		return await DATABASE.execute(QUERY, [userId, channelId], DB).then((res) => res);
 	},
 };
 
