@@ -5,7 +5,11 @@ const MessageService = require("../../Service/Chat/Message");
 const { HttpStatusCode } = require("axios");
 
 ROUTER.get("/:channelId/messages", async (req, res) => {
-	let messages = await MessageService.getMessages(req.params.channelId, req.query.lastMessageId);
+	const channelId = req.params.channelId;
+	const lastMessageId = req.query.lastMessageId;
+	const order = req.query.order;
+
+	let messages = await MessageService.getMessages(channelId, lastMessageId, order);
 	res.status(HttpStatusCode.Ok).send(messages);
 });
 
@@ -23,8 +27,8 @@ ROUTER.post("/:channelId/messages", async (req, res) => {
 		req.headers["content-type"].toLowerCase().includes("multipart/form-data") &&
 		req.params.type !== "text"
 	)
-		sendFileMessage(req, res); // 파일 전송
-	else sendTextMesasge(req, res); // 헤더가 없으면 일반 메세지로 간주
+		sendFileMessage(req, res);
+	else sendTextMesasge(req, res);
 });
 
 async function sendFileMessage(req, res) {
@@ -32,7 +36,7 @@ async function sendFileMessage(req, res) {
 
 	let result = await MessageService.sendFileMessage(channelId, req);
 
-	if (result) res.status(HttpStatusCode.Created).end();
+	if (result) res.status(HttpStatusCode.Created).send(result);
 	else res.status(HttpStatusCode.InternalServerError).end();
 }
 
@@ -43,7 +47,7 @@ async function sendTextMesasge(req, res) {
 
 	let result = await MessageService.sendTextMessage(channelId, senderId, text);
 
-	if (result) res.status(HttpStatusCode.Created).end();
+	if (result) res.status(HttpStatusCode.Created).send(result);
 	else res.status(HttpStatusCode.InternalServerError).end();
 }
 
