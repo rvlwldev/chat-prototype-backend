@@ -9,12 +9,12 @@ const MESSAGE_LOAD_LIMIT_COUNT = 50;
 // TODO : channelId 없으면 예외처리
 // TODO : 잘못된 메세지 아이디 들어오면 예외처리
 const MessageService = {
-	getMessages: async (channelId, lastMessageId = null) => {
+	getMessages: async (channelId, lastMessageId = null, order) => {
 		let messages;
 		let count;
 
 		if (lastMessageId)
-			return MessageService.getMessagesWithLastMessageId(channelId, lastMessageId);
+			return MessageService.getMessagesWithLastMessageId(channelId, lastMessageId, order);
 		else {
 			messages = await messageQuery.select(channelId, MESSAGE_LOAD_LIMIT_COUNT);
 			count = await messageQuery.selectCount(channelId);
@@ -31,7 +31,7 @@ const MessageService = {
 		return { message: message };
 	},
 
-	getMessagesWithLastMessageId: async (channelId, lastMessageId) => {
+	getMessagesWithLastMessageId: async (channelId, lastMessageId, order) => {
 		/** @type Array */
 		const lastMessage = await messageQuery.selectByIds(channelId, lastMessageId);
 
@@ -39,43 +39,45 @@ const MessageService = {
 		if (lastMessage.length < 1) {
 		}
 
-		const lastCreatedAt = lastMessage[0].createdAt;
+		let lastCreatedAt = lastMessage[0].createdAt;
 
-		const messages = await messageQuery.selectBeforeByCreatedAt(
+		const messages = await messageQuery.selecByCreatedAt(
 			channelId,
 			lastCreatedAt,
+			order,
 			MESSAGE_LOAD_LIMIT_COUNT
 		);
 
-		let count = await messageQuery.selectCountBeforeCreatedAt(channelId, lastCreatedAt);
+		let count = await messageQuery.selectCountBeforeCreatedAt(channelId, lastCreatedAt, order);
 
 		return { messages: messages, hasHistory: messages.length < count };
 	},
 
+	// TODO : 간혈적으로 insert되기 전에 클라이언트가 이벤트 받고 조회하면 없는 경우 생김
 	sendTextMessage: async (channelId, senderId, text, parentMessageId = null) => {
-		let result = false;
-
-		await exAPI
+		let sdkResult = await exAPI
 			.post("channels/" + channelId + "/messages/send", {
 				senderId: senderId,
 				type: "text",
 				data: { type: "text" },
 			})
-			.then(async (response) => {
-				await messageQuery.insert({
-					id: response.message.id,
-					parentMessageId: parentMessageId,
-					channelId,
-					userId: senderId,
-					text: text,
-					type: "text",
-					createdAt: response.message.createdAt,
-				});
-			})
-			.then(() => (result = true))
-			.catch((err) => console.error(err));
+			.then((res) => res);
 
-		return result;
+		let dbResult = await messageQuery.insert({
+			id: sdkResult.message.id,
+			parentMessageId: parentMessageId,
+			channelId,
+			userId: senderId,
+			text: text,
+			type: "text",
+			createdAt: sdkResult.message.createdAt,
+		});
+
+		if (!dbResult) throw new Error("messageQuery.insert error");
+
+		return await messageQuery
+			.selectByIds(channelId, sdkResult.message.id)
+			.then((result) => result[0]);
 	},
 
 	sendFileMessage: async (channelId, request) => {
@@ -88,32 +90,33 @@ const MessageService = {
 			data: { type: fileType },
 		};
 
-		if (file.isUploaded) {
-			return await exAPI
-				.post("channels/" + channelId + "/messages/send", exAPIbody)
-				.then(async (response) => {
-					await messageQuery.insert({
-						id: response.message.id,
-						parentMessageId: null,
-						channelId,
-						userId: request.body.senderId,
-						text: null,
-						type: fileType,
-						fileName: fileName,
-						filePath: filePath,
-						fileSize: fileSize,
-						createdAt: response.message.createdAt,
-					});
+		let sdkResult;
 
-					return response.message;
-				})
-				.catch((err) => {
-					console.log("FILE MESSAGE ERROR");
-					console.error(err);
-				});
+		if (file.isUploaded) {
+			sdkResult = await exAPI
+				.post("channels/" + channelId + "/messages/send", exAPIbody)
+				.then((res) => res);
+
+			let dbResult = await messageQuery.insert({
+				id: sdkResult.message.id,
+				parentMessageId: null,
+				channelId,
+				userId: request.body.senderId,
+				text: null,
+				type: fileType,
+				fileName: fileName,
+				filePath: filePath,
+				fileSize: fileSize,
+				createdAt: sdkResult.message.createdAt,
+			});
+
+			if (!dbResult) throw new Error("messageQuery.insert (file) error");
+			if (!sdkResult.message.id) throw new Error("SDK file message send Error");
 		}
 
-		return false;
+		return await messageQuery
+			.selectByIds(channelId, sdkResult.message.id)
+			.then((result) => result[0]);
 	},
 };
 

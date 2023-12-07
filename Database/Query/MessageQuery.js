@@ -48,7 +48,7 @@ const messageQuery = {
 			createdAt,
 		];
 
-		return DATABASE.execute(QUERY, values, DB);
+		return await DATABASE.execute(QUERY, values, DB);
 	},
 
 	insertAll: async (messages, db = "local") => {
@@ -67,7 +67,7 @@ const messageQuery = {
              M.channelId,
              M.userId,
              U.username,
-             U.profileUserImageUrl AS profileImageUrl,
+             U.profileUserImageUrl,
              M.text,
              M.type,
              M.filePath,
@@ -106,7 +106,7 @@ const messageQuery = {
              M.channelId,
              M.userId,
              U.username,
-             U.profileUserImageUrl AS profileImageUrl,
+             U.profileUserImageUrl,
              M.text,
              M.type,
              M.filePath,
@@ -125,14 +125,16 @@ const messageQuery = {
 		return await DATABASE.select(QUERY, db);
 	},
 
-	selectBeforeByCreatedAt: async (channelId, lastCreatedAt, limit, db = "local") => {
+	selecByCreatedAt: async (channelId, lastCreatedAt, order = "oldest", limit, db = "local") => {
+		let inequalitySign = order == "latest" ? ">" : "<";
+
 		const QUERY = `
       SELECT M.id,
              M.parentMessageId,
              M.channelId,
              M.userId,
              U.username,
-             U.profileUserImageUrl AS profileImageUrl,
+             U.profileUserImageUrl,
              M.text,
              M.type,
              M.filePath,
@@ -145,7 +147,7 @@ const messageQuery = {
         JOIN USER U
           ON M.userId = U.id
        WHERE M.channelId = '${channelId}'
-         AND M.createdAt < ${lastCreatedAt}
+         AND M.createdAt ${inequalitySign} ${lastCreatedAt}
        ORDER BY M.createdAt DESC
        LIMIT ${limit}
     `;
