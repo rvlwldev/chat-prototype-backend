@@ -16,7 +16,7 @@ const channelQuery = {
 		return await DATABASE.select(QUERY, DB).then((res) => res);
 	},
 
-	selectChannel: async (channelId, DB = "local") => {
+	selectChannelById: async (channelId, DB = "local") => {
 		const QUERY = `
             SELECT C.id
                   ,C.name
@@ -28,13 +28,25 @@ const channelQuery = {
 		return await DATABASE.select(QUERY, DB).then((res) => res);
 	},
 
+	selectChannelsByType: async (type, DB = "local") => {
+		const QUERY = `
+            SELECT id,
+                   name,
+                   type
+            FROM CHANNEL
+            WHERE type = '${type}'
+            `;
+
+		return await DATABASE.select(QUERY, DB).then((res) => res);
+	},
+
 	selectSuperPublicChannels: async (DB = "local") => {
 		const QUERY = `
             SELECT id,
                    name,
                    type
             FROM CHANNEL
-            WHERE type = 'SUPER_PUBLIC'
+            WHERE type = 'super_public'
             `;
 
 		return await DATABASE.select(QUERY, DB).then((res) => res);
@@ -77,19 +89,15 @@ const channelQuery = {
 	mergeUserChannels: async (channelId, userId, DB = "local") => {
 		const QUERY = `
             INSERT INTO USER_CHANNEL (
-                userId,
-                channelId
-            )
-            VALUES (
-                ? ,
-                ?
-            )
+                channelId,
+                userId
+            ) VALUES (?, ?)
             ON DUPLICATE KEY UPDATE
-            userId = VALUES(userId),
-            channelId = VALUES(channelId);
+            channelId = VALUES(channelId),
+            userId = VALUES(userId);
         `;
 
-		return await DATABASE.execute(QUERY, [userId, channelId], DB).then((res) => res);
+		return await DATABASE.execute(QUERY, [channelId, userId], DB).then((res) => res);
 	},
 };
 

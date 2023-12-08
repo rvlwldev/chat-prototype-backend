@@ -7,6 +7,8 @@ const path = require("path");
 
 const APP = express();
 
+const ChannelValidator = require("./Service/Chat/ChannelValidator");
+
 const sessionStore = new MySQLStore({
 	host: "localhost",
 	port: "3306",
@@ -73,4 +75,9 @@ const message = require("./Route/Chat/Message");
 APP.use("/channels", message);
 
 const port = process.env.PORT || 3000;
-APP.listen(port, () => console.log(`서버가 http://localhost:${port} 포트에서 실행 중입니다.`));
+APP.listen(port, async () => {
+	await ChannelValidator.validatePublicChannelAdminId();
+	await ChannelValidator.validatePublicChannels();
+
+	console.log(`서버가 http://localhost:${port} 포트에서 실행 중입니다.`);
+});
