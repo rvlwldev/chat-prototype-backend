@@ -10,15 +10,11 @@ const MESSAGE_LOAD_LIMIT_COUNT = 50;
 // TODO : 잘못된 메세지 아이디 들어오면 예외처리
 const MessageService = {
 	getMessages: async (channelId, lastMessageId = null, order) => {
-		let messages;
-		let count;
-
 		if (lastMessageId)
 			return MessageService.getMessagesWithLastMessageId(channelId, lastMessageId, order);
-		else {
-			messages = await messageQuery.select(channelId, MESSAGE_LOAD_LIMIT_COUNT);
-			count = await messageQuery.selectCount(channelId);
-		}
+
+		let messages = await messageQuery.select(channelId, MESSAGE_LOAD_LIMIT_COUNT);
+		let count = await messageQuery.selectCount(channelId);
 
 		return { messages: messages, hasHistory: messages.length < count };
 	},
@@ -35,12 +31,13 @@ const MessageService = {
 		/** @type Array */
 		const lastMessage = await messageQuery.selectByIds(channelId, lastMessageId);
 
-		// TODO : 아아디값들 잘못 입력 Exception
+		// TODO : 아이디값 잘못 입력 Exception
 		if (lastMessage.length < 1) {
 		}
 
 		let lastCreatedAt = lastMessage[0].createdAt;
 
+		let count = await messageQuery.selectCountBeforeCreatedAt(channelId, lastCreatedAt, order);
 		const messages = await messageQuery.selecByCreatedAt(
 			channelId,
 			lastCreatedAt,
@@ -48,12 +45,10 @@ const MessageService = {
 			MESSAGE_LOAD_LIMIT_COUNT
 		);
 
-		let count = await messageQuery.selectCountBeforeCreatedAt(channelId, lastCreatedAt, order);
-
 		return { messages: messages, hasHistory: messages.length < count };
 	},
 
-	// TODO : 간혈적으로 insert되기 전에 클라이언트가 이벤트 받고 조회하면 없는 경우 생김
+	// TODO : 간혈적으로 insert되기 전에 클라이언트가 이벤트 받고 조회하면 없는 경우 생김 (await 해도... ㅠ)
 	sendTextMessage: async (channelId, senderId, text, parentMessageId = null) => {
 		let sdkResult = await exAPI
 			.post("channels/" + channelId + "/messages/send", {
@@ -119,28 +114,5 @@ const MessageService = {
 			.then((result) => result[0]);
 	},
 };
-
-// const parser = {
-// 	toDTObyQueryResults: (/** @type Array */ queryResults) => {
-// 		return queryResults.map((row) => {
-// 			return {
-// 				id: row.id,
-// 				channelId: row.channelId,
-// 				userId: row.userId,
-// 				username: row.username,
-// 				profileImageUrl: row.profileImageUrl,
-// 				text: row.text,
-// 				createdAt: row.createdAt,
-// 				test: row.test,
-// 				data: {
-// 					type: row.type,
-// 					filePath: row.filePath,
-// 					fileName: row.fileName,
-// 					fileSize: row.fileSize,
-// 				},
-// 			};
-// 		});
-// 	},
-// };
 
 module.exports = MessageService;
