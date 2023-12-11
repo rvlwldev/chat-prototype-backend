@@ -3,7 +3,7 @@ const ROUTER = express.Router();
 
 const { HttpStatusCode } = require("axios");
 
-const UserService = require("../../Service/User/UserValidator");
+const UserService = require("../../Service/User/Validator");
 const UserNotFoundException = require("../../Exception/User/UserNotFound");
 
 ROUTER.post("/login", async (req, res) => {
