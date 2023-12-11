@@ -99,6 +99,21 @@ const channelQuery = {
 
 		return await DATABASE.execute(QUERY, [channelId, userId], DB).then((res) => res);
 	},
+
+	searchChannelsByUserId: async (userId, text, DB = "local") => {
+		const QUERY = `
+            SELECT C.id
+                  ,C.name
+              FROM USER_CHANNEL UC
+             INNER 
+              JOIN CHANNEL C
+                ON UC.channelId = C.id
+               AND UC.userId = '${userId}'
+             WHERE C.name LIKE '%${text}%'
+        `;
+
+		return await DATABASE.select(QUERY, DB).then((res) => res);
+	},
 };
 
 module.exports = channelQuery;

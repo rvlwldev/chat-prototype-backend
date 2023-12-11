@@ -19,6 +19,15 @@ const DATABASE = {
 		connectionLimit: 10,
 	}),
 
+	cug: MY_SQL.createPool({
+		host: "121.67.133.136",
+		user: "ksy_local",
+		password: "ksy123",
+		database: "cugdb",
+		waitForConnections: true,
+		connectionLimit: 10,
+	}),
+
 	execute: async (query, values, db) => {
 		if (!db) db = "local";
 

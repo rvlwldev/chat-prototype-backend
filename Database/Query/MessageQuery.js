@@ -19,20 +19,20 @@ const messageQuery = {
 		} = message;
 
 		const QUERY = `
-      INSERT INTO MESSAGE (
-        id,
-        parentMessageId,
-        channelId,
-        userId,
-        text,
-        type,
-        filePath,
-        fileName,
-        fileSize,
-        createdAt
-      ) VALUES ( ?,?,?,?,?,?,?,?,?,? )
-      ON DUPLICATE KEY UPDATE
-        text = VALUES(text);  
+      	INSERT INTO MESSAGE (
+        	id,
+        	parentMessageId,
+        	channelId,
+        	userId,
+			text,
+			type,
+			filePath,
+			fileName,
+			fileSize,
+			createdAt
+		) VALUES ( ?,?,?,?,?,?,?,?,?,? )
+		ON DUPLICATE KEY UPDATE
+			text = VALUES(text);  
     `;
 
 		const values = [
@@ -62,28 +62,28 @@ const messageQuery = {
 
 	select: async (channelId, limit, db = "local") => {
 		const QUERY = `
-      SELECT M.id,
-             M.parentMessageId,
-             M.channelId,
-             M.userId,
-             U.username,
-             U.profileUserImageUrl,
-             M.text,
-             M.type,
-             M.filePath,
-             M.fileName,
-             M.fileSize,
-             M.createdAt,
-             CONVERT_TZ(FROM_UNIXTIME(M.createdAt / 1000), 'UTC', 'Asia/Seoul') AS test
-        FROM MESSAGE M
-        LEFT
-       OUTER
-        JOIN USER U
-          ON M.userId = U.id
-       WHERE M.channelId = '${channelId}'
-       ORDER BY M.createdAt DESC
-       LIMIT ${limit}
-    `;
+			SELECT  M.id,
+					M.parentMessageId,
+					M.channelId,
+					M.userId,
+					U.username,
+					U.profileUserImageUrl,
+					M.text,
+					M.type,
+					M.filePath,
+					M.fileName,
+					M.fileSize,
+					M.createdAt,
+					CONVERT_TZ(FROM_UNIXTIME(M.createdAt / 1000), 'UTC', 'Asia/Seoul') AS test
+			FROM MESSAGE M
+			LEFT
+		   OUTER
+			JOIN USER U
+			ON M.userId = U.id
+		WHERE M.channelId = '${channelId}'
+		ORDER BY M.createdAt DESC
+		LIMIT ${limit}
+		`;
 
 		return await DATABASE.select(QUERY, db);
 	},
@@ -173,6 +173,34 @@ const messageQuery = {
 		let result = await DATABASE.select(QUERY, db);
 
 		return result[0].count;
+	},
+
+	searchByUserId: async (userId, text, DB = "local") => {
+		const QUERY = `
+			SELECT M.channelId,
+				   M.id,
+				   M.parentMessageId,
+				   M.userId,
+				   U.username,
+				   M.text,
+				   M.filePath,
+				   M.fileName,
+				   M.fileSize,
+				   M.createdAt
+			  FROM MESSAGE M
+			 INNER 
+			  JOIN USER_CHANNEL UC
+			    ON M.channelId = UC.channelId
+				AND UC.userId = '${userId}'
+			   AND M.type = 'text'
+			 INNER
+			  JOIN USER U
+			    ON UC.userId = U.id
+			 WHERE M.text LIKE '%${text}%'
+			 	OR M.fileName LIKE '%${text}%'
+		`;
+
+		return await DATABASE.select(QUERY, DB);
 	},
 };
 
