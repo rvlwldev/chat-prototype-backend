@@ -13,7 +13,7 @@ const UserService = {
 		else return USER_INFO[0];
 	},
 
-	saveUser: async (userId, username, userProfileImageURL, role) => {
+	createUser: async (userId, username, userProfileImageURL, role) => {
 		return await userQuery.insert(userId, username, userProfileImageURL, role);
 	},
 
@@ -24,13 +24,20 @@ const UserService = {
 		});
 	},
 
-	saveUserOnExAPI: async (userId, username) => {
-		return await exAPI
-			.post("users/create", { userId: userId, password: userId, username: username })
-			.then((result) => {
+	EX_API: {
+		getUserById: async (userId) =>
+			await exAPI.get(`users/${userId}`).then((result) => {
 				if (result.error) throw new Error(result.message);
 				else return result.user;
-			});
+			}),
+
+		createUser: async (userId, username) =>
+			await exAPI
+				.post("users/create", { userId: userId, password: userId, username: username })
+				.then((result) => {
+					if (result.error) throw new Error(result.message);
+					else return result.user;
+				}),
 	},
 };
 

@@ -18,8 +18,8 @@ const ChannelValidator = {
 		try {
 			await UserService.getUserById(SUPER_PUBLIC_CHANNEL_ADMIN_ID);
 
-			if (!UserService.getUserOnExAPI(SUPER_PUBLIC_CHANNEL_ADMIN_ID))
-				await UserService.saveUserOnExAPI(
+			if (!UserService.EX_API.getUserById(SUPER_PUBLIC_CHANNEL_ADMIN_ID))
+				await UserService.EX_API.createUser(
 					SUPER_PUBLIC_CHANNEL_ADMIN_ID,
 					SUPER_PUBLIC_CHANNEL_ADMIN_NM
 				);
@@ -28,7 +28,7 @@ const ChannelValidator = {
 			return true;
 		} catch (error) {
 			if (error instanceof UserNotFoundException) {
-				await UserService.saveUser(
+				await UserService.createUser(
 					SUPER_PUBLIC_CHANNEL_ADMIN_ID,
 					SUPER_PUBLIC_CHANNEL_ADMIN_NM,
 					null,

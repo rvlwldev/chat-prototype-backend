@@ -68,7 +68,9 @@ async function createAndGetUserOnExAPI(userId, username) {
 
 async function checkPublicChannels() {
 	try {
-		let count = await channelQuery.selectSuperPublicChannels().then((res) => res.length);
+		let count = await channelQuery
+			.selectChannelsByType("super_public")
+			.then((res) => res.length);
 
 		if (SUPER_PUBLIC_CHANNEL_MAP.size != count) {
 			for (const [channelId, channelName] of SUPER_PUBLIC_CHANNEL_MAP.entries())

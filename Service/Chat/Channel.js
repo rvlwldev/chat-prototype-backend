@@ -9,7 +9,11 @@ const exAPI = new ExternalAPI();
 // TODO : 채널검색 (retrieve? search?)
 const ChannelService = {
 	createChannel: async (id, name, type) => {
-		return await channelQuery.mergeChannel(id, name, type);
+		return await channelQuery.insertChannel(id, name, type);
+	},
+
+	addUserToChannel: async (channelId, userId) => {
+		await channelQuery.insertUserChannels(channelId, userId);
 	},
 
 	getChannelById: async (channelId) => {
@@ -24,10 +28,6 @@ const ChannelService = {
 		return await channelQuery
 			.selectChannelsByUserId(userId)
 			.then((result) => result.filter((row) => row.type == type));
-	},
-
-	addUserToChannel: async (channelId, userId) => {
-		await channelQuery.mergeUserChannels(channelId, userId);
 	},
 
 	EX_API: {

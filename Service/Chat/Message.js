@@ -98,7 +98,7 @@ const MessageService = {
 		let lastCreatedAt = lastMessage[0].createdAt;
 
 		let count = await messageQuery.selectCountBeforeCreatedAt(channelId, lastCreatedAt, order);
-		const messages = await messageQuery.selecByCreatedAt(
+		const messages = await messageQuery.selectByCreatedAt(
 			channelId,
 			lastCreatedAt,
 			order,
