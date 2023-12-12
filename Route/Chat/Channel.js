@@ -8,25 +8,7 @@ const ChannelService = require("../../Service/Chat/Channel");
 
 const { HttpStatusCode } = require("axios");
 
-ROUTER.get("/:userId", async (req, res) => {
-	let channelArray = await ChannelService.getUserChannelsByUserId(req.params.userId);
-	res.status(HttpStatusCode.Ok).send(channelArray);
-});
-
-ROUTER.get("/:channelId/info", async (req, res) => {
-	console.log(`ROUTER.get("/:channelId", ... `);
-
-	let info = await ChannelService.getChannelInfo(req.params.channelId);
-
-	console.log(info);
-
-	res.status(HttpStatusCode.Ok).send(info);
-});
-
-// ROUTER.get("/:channelId/members", async (req, res) => {
-// 	let channels = await ChannelService.getUserChannelsByUserId(req.params.userId);
-// 	res.status(HttpStatusCode.Ok).send(channels);
-// });
+ROUTER.post("/", async (req, res) => {});
 
 ROUTER.post("/:channelId/members/add", async (req, res) => {
 	const channelId = req.params.channelId;
@@ -44,5 +26,12 @@ ROUTER.post("/:channelId/members/add", async (req, res) => {
 			else res.status(HttpStatusCode.BadRequest).send(err);
 		});
 });
+
+ROUTER.get("/:channelId", async (req, res) => {
+	let channel = await ChannelService.getChannelById(req.params.channelId);
+	res.status(HttpStatusCode.Ok).send(channel);
+});
+
+ROUTER.get("/:channelId/members", async (req, res) => {});
 
 module.exports = ROUTER;

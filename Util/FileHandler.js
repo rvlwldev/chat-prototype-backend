@@ -38,10 +38,10 @@ const saveFile = (directoryPath, request) => {
 				const DOMAIN = `${request.protocol}://${request.get("host")}`;
 				const FILE_INFO = {
 					isUploaded: true,
-					fileType: request.body.type,
-					fileName: request.file.filename,
-					filePath: `${DOMAIN}/${FILE_STORAGE_ROOT_DIRECTORY}${directoryPath}/${request.file.filename}`,
-					fileSize: request.file.size,
+					type: request.body.type,
+					name: request.file.filename,
+					path: `${DOMAIN}/${FILE_STORAGE_ROOT_DIRECTORY}${directoryPath}/${request.file.filename}`,
+					size: request.file.size,
 				};
 
 				let result = request;
@@ -84,6 +84,4 @@ const convertFileName = (filename, expansion) => {
 	return `${filename} (1)${expansion ? "." + expansion : ""}`;
 };
 
-module.exports = {
-	saveFile,
-};
+module.exports = { saveFile };

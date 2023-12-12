@@ -30,4 +30,9 @@ ROUTER.post("/login", async (req, res) => {
 	}
 });
 
+ROUTER.get("/:userId/channels", async (req, res) => {
+	let channelArray = await ChannelService.getAllUserChannels(req.params.userId);
+	res.status(HttpStatusCode.Ok).send(channelArray);
+});
+
 module.exports = ROUTER;

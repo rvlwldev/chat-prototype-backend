@@ -155,12 +155,7 @@ const messageQuery = {
 		return await DATABASE.select(QUERY, db);
 	},
 
-	selectCountBeforeCreatedAt: async (
-		channelId,
-		lastCreatedAt,
-		order = "oldest",
-		db = "local"
-	) => {
+	selectCountBeforeCreatedAt: async (channelId, lastCreatedAt, order, db = "local") => {
 		let inequalitySign = order == "latest" ? ">" : "<";
 
 		const QUERY = `

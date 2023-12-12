@@ -49,16 +49,16 @@ const ChannelValidator = {
 
 			if (SUPER_PUBLIC_CHANNEL_MAP.size != count)
 				for (const [channelId, channelName] of SUPER_PUBLIC_CHANNEL_MAP.entries()) {
-					await ChannelService.saveChannel(channelId, channelName, "super_public");
-					await ChannelService.saveChannelOnExAPI(
+					await ChannelService.createChannel(channelId, channelName, "super_public");
+					await ChannelService.EX_API.saveChannel(
 						channelId,
 						channelName,
 						"super_public",
 						SUPER_PUBLIC_CHANNEL_ADMIN_ID
 					);
 
-					await ChannelService.joinChannel(channelId, SUPER_PUBLIC_CHANNEL_ADMIN_ID);
-					await ChannelService.joinChannelOnExAPI(
+					await ChannelService.addUserToChannel(channelId, SUPER_PUBLIC_CHANNEL_ADMIN_ID);
+					await ChannelService.EX_API.addUserToChannel(
 						channelId,
 						SUPER_PUBLIC_CHANNEL_ADMIN_ID
 					);
