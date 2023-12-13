@@ -4,28 +4,39 @@ const UserService = require("../User/User");
 const ChannelService = require("../Chat/Channel");
 
 // TODO : 글로벌 상수화 시키기
-const SUPER_PUBLIC_CHANNEL_ADMIN_ID = "47e2beb243c5bb9c";
-const SUPER_PUBLIC_CHANNEL_ADMIN_NM = "김형준(전산)";
+const SUPER_PUBLIC_CHANNEL_ADMIN_ID = "rlagudwns";
+const SUPER_PUBLIC_CHANNEL_ADMIN_NM = "김형준";
 const SUPER_PUBLIC_CHANNEL_MAP = new Map([
 	["FIRST_TEST_OPEN_CHAT_CHANNEL01", "테스트 전체 공개 채팅방01"],
 	["FIRST_TEST_OPEN_CHAT_CHANNEL02", "테스트 전체 공개 채팅방02"],
 	["FIRST_TEST_OPEN_CHAT_CHANNEL03", "테스트 전체 공개 채팅방03"],
 ]);
 
-// TODO : 서버키면 바로 이거부터 하게 ...
 const ChannelValidator = {
 	validatePublicChannelAdminId: async () => {
 		try {
-			await UserService.getUserById(SUPER_PUBLIC_CHANNEL_ADMIN_ID);
+			let user = await UserService.EX_API.getUserById(SUPER_PUBLIC_CHANNEL_ADMIN_ID);
 
-			if (!UserService.EX_API.getUserById(SUPER_PUBLIC_CHANNEL_ADMIN_ID))
+			if (!user) {
 				await UserService.EX_API.createUser(
 					SUPER_PUBLIC_CHANNEL_ADMIN_ID,
 					SUPER_PUBLIC_CHANNEL_ADMIN_NM
 				);
+			}
+
+			user = await UserService.getUserById(SUPER_PUBLIC_CHANNEL_ADMIN_ID);
+
+			if (!user) {
+				await UserService.createUser(
+					SUPER_PUBLIC_CHANNEL_ADMIN_ID,
+					SUPER_PUBLIC_CHANNEL_ADMIN_NM,
+					null,
+					99,
+					"1234"
+				);
+			}
 
 			console.log("서버 관리자 계정 정합성 검사 완료");
-			return true;
 		} catch (error) {
 			if (error instanceof UserNotFoundException) {
 				await UserService.createUser(
@@ -42,7 +53,7 @@ const ChannelValidator = {
 
 	validatePublicChannels: async () => {
 		try {
-			let count = await ChannelService.getAllUserChannelsByType(
+			let count = await ChannelService.getChannelsByUserIdAndType(
 				SUPER_PUBLIC_CHANNEL_ADMIN_ID,
 				"super_public"
 			).then((res) => res.length);

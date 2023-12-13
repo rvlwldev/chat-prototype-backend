@@ -36,6 +36,7 @@ const saveFile = (directoryPath, request) => {
 				reject(err);
 			} else {
 				const DOMAIN = `${request.protocol}://${request.get("host")}`;
+
 				const FILE_INFO = {
 					isUploaded: true,
 					type: request.body.type,
@@ -45,9 +46,16 @@ const saveFile = (directoryPath, request) => {
 				};
 
 				let result = request;
-				result.file = FILE_INFO;
+				result.FILE = FILE_INFO;
 
-				resolve(result);
+				// resolve(result);
+				resolve({
+					isUploaded: true,
+					type: request.body.type,
+					name: request.file.filename,
+					path: `${DOMAIN}/${FILE_STORAGE_ROOT_DIRECTORY}${directoryPath}/${request.file.filename}`,
+					size: request.file.size,
+				});
 			}
 		});
 	});

@@ -73,8 +73,7 @@ const messageQuery = {
 					M.filePath,
 					M.fileName,
 					M.fileSize,
-					M.createdAt,
-					CONVERT_TZ(FROM_UNIXTIME(M.createdAt / 1000), 'UTC', 'Asia/Seoul') AS test
+					M.createdAt
 			FROM MESSAGE M
 			LEFT
 		   OUTER

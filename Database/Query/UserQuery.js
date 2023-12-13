@@ -1,30 +1,18 @@
 const DATABASE = require("../Database");
 
 const userQuery = {
-	insert: async (id, username, profileUserImageUrl = null, role = 1, DB = "local") => {
+	insert: async (id, username, profileUserImageUrl = null, role = 1, pw, DB = "local") => {
 		const QUERY = `
             INSERT INTO USER (
                 id, 
                 username, 
                 profileUserImageUrl,
-                role
-            ) VALUES ( ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                username = ?,
-                profileUserImageUrl = ?,
-                role = ?;
+                role,
+                temp_pw
+            ) VALUES ( ?, ?, ?, ?, ?)
         `;
 
-		const values = [
-			id,
-			username,
-			profileUserImageUrl,
-			role,
-
-			username,
-			profileUserImageUrl,
-			role,
-		];
+		const values = [id, username, profileUserImageUrl, role, pw];
 
 		return await DATABASE.execute(QUERY, values, DB);
 	},
@@ -45,7 +33,8 @@ const userQuery = {
 		const QUERY = `
             SELECT id AS id,
                    username AS name,
-                   profileUserImageUrl	
+                   profileUserImageUrl,
+                   temp_pw
               FROM USER
              WHERE ID = '${id}'
         `;

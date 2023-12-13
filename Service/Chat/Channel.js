@@ -54,6 +54,10 @@ const ChannelService = {
 			let body = { members: [userId] };
 
 			return await exAPI.post(requestURL, body).then((result) => {
+				console.log();
+				console.log(result);
+				console.log();
+
 				if (result.error) {
 					if (result.code == "2003") throw new ChannelNotFoundException(channelId);
 					else throw new Error(result.message);

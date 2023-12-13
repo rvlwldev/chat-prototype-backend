@@ -10,11 +10,14 @@ const MESSAGE_LOAD_LIMIT_COUNT = 50;
 // TODO : 잘못된 메세지 아이디 들어오면 예외처리
 // TODO : 메세지 검색기능
 const MessageService = {
-	// TODO : 간혈적으로 insert되기 전에 클라이언트가 이벤트 받고 조회하면 없는 경우 생김 (await 해도...)
+	// TODO : 간혈적으로 insert되기 전에 클라이언트가 이벤트 받고 조회요청 받는 경우 생김 (await 해도...)
+	// 일단은 재귀처리했음
 	addTextMessage: async (channelId, senderId, text, parentMessageId = null) => {
 		const exAPIresult = await MessageService.EX_API.addTextMessage(channelId, senderId)
 			.then((message) => message)
 			.catch((err) => console.log(err)); // TODO : 톡플러스 텍스트 메세지 전송 예외처리
+
+		console.log(exAPIresult);
 
 		let params = {
 			id: exAPIresult.message.id,
@@ -43,11 +46,12 @@ const MessageService = {
 			.then((res) => res)
 			.catch((err) => console.log(err)); // TODO : 파일 업로드 예외처리
 
-		const { type, name, path, size } = FILE;
-
 		if (!FILE.isUploaded) {
 		}
 
+		const { type, name, path, size } = FILE;
+
+		let senderId = request.body.senderId;
 		const exAPIresult = await MessageService.EX_API.addFileMessage(channelId, senderId, type)
 			.then((res) => res)
 			.catch((err) => console.log(err)); // TODO : 톡플러스 파일 메세지 전송 예외처리
@@ -58,7 +62,7 @@ const MessageService = {
 			channelId,
 			userId: request.body.senderId,
 			text: null,
-			type: fileType,
+			type: type,
 			fileName: name,
 			filePath: path,
 			fileSize: size,
