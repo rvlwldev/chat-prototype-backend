@@ -1,9 +1,14 @@
+# Default
 /node_modules/
-/messageFiles/
-/File/message
 /.vscode/
-
 package-lock.json
-
 *.log
 *.tmp
+*.env
+
+# Prisma
+/migrations/
+
+/File/message
+
+
