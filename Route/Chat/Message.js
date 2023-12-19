@@ -1,7 +1,7 @@
 const ROUTER = require("express").Router();
 const path = require("path");
 
-const MessageService = require("../../Service/Chat/Message");
+const { WS } = require("../../Utils/WebSocket");
 
 const { HttpStatusCode } = require("axios");
 
@@ -59,15 +59,8 @@ const { HttpStatusCode } = require("axios");
  *       500:
  *         description: 내부 서버 오류
  */
-ROUTER.post("/:channelId/messages", async (req, res) => {
-	let contentType = req.headers["content-type"].toLowerCase();
 
-	if (contentType.includes("multipart/form-data") && req.params.type !== "text") {
-		sendFileMessage(req, res);
-	} else {
-		sendTextMesasge(req, res);
-	}
-});
+ROUTER.post("/:channelId/messages", async (req, res) => {});
 
 async function sendFileMessage(req, res) {
 	const channelId = req.params.channelId;

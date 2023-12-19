@@ -1,11 +1,6 @@
 const express = require("express");
 const ROUTER = express.Router();
 
-const ExternalAPI = require("../../Util/ExternalAPI");
-const exAPI = new ExternalAPI();
-
-const ChannelService = require("../../Service/Chat/Channel");
-
 const { HttpStatusCode } = require("axios");
 
 /**
@@ -43,22 +38,7 @@ ROUTER.post("/", async (req, res) => {}); // TODO : 채널 생성
  *                 name: null
  *                 type: "private"
  */
-ROUTER.post("/:channelId/users", async (req, res) => {
-	const channelId = req.params.channelId;
-	let members = req.body.members;
-	if (!members instanceof Array) members = [members];
-
-	let body = { members: members };
-
-	await exAPI
-		.post(`channels/${channelId}/members/add`, body)
-		.then((response) => res.status(HttpStatusCode.Created).send(response))
-		.catch((err) => {
-			if (err.code == "2003" || err.code == "3003")
-				res.status(HttpStatusCode.NotFound).send(err);
-			else res.status(HttpStatusCode.BadRequest).send(err);
-		});
-});
+ROUTER.post("/:channelId/users", async (req, res) => {});
 
 /**
  * @swagger
@@ -83,10 +63,7 @@ ROUTER.post("/:channelId/users", async (req, res) => {
  *               name: "테스트 전체 공개 채팅방01"
  *               type: "super_public"
  */
-ROUTER.get("/:channelId", async (req, res) => {
-	let channel = await ChannelService.getChannelById(req.params.channelId);
-	res.status(HttpStatusCode.Ok).send(channel);
-});
+ROUTER.get("/:channelId", async (req, res) => {});
 
 /**
  * @swagger
