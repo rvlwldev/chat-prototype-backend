@@ -1,20 +1,20 @@
 const WebSocket = require("ws");
 
 class ClientConnection {
-	#ID;
+	ID;
 
 	channelIdSet = new Set();
+
 	/** @type WebSocket.Server */ WS;
 
 	constructor(serviceId, userId, ws) {
-		this.#ID = `${serviceId}-${userId}`;
+		this.ID = `${serviceId}-${userId}`;
 		this.WS = ws;
 	}
 
 	addChannelId = (channelId) => this.channelIdSet.add(channelId);
-	deleteChannelId = (channelId) => this.channelIdSet.delete(channelId);
 
-	valueOf = () => this.#ID;
+	deleteChannelId = (channelId) => this.channelIdSet.delete(channelId);
 }
 
 /** @type Map<String, ClientConnection> */
@@ -45,6 +45,18 @@ function openSocketWithServer(server) {
 		// 클라이언트 에러
 		ws.onerror = (error) => console.error(`클라이언트 에러: ${error.message}`);
 
+		// 임시 테스트용
+		ws.onmessage = (payload) => {
+			payload = JSON.parse(payload.data);
+
+			if (payload.event == "message") {
+				const channelId = payload.data.channel.id;
+				const message = payload.data.message;
+
+				WS.publish(channelId, payload.event, message);
+			}
+		};
+
 		const connection = new ClientConnection(serviceId, userId, ws);
 		connectionMap.set(`${serviceId}-${userId}`, connection);
 	});
@@ -67,7 +79,7 @@ async function sendMessage(ws, eventName, message) {
 		ws.send(
 			JSON.stringify({
 				event: eventName,
-				message: message,
+				result: message,
 			}),
 			(error) => {
 				if (error) reject(error);
@@ -81,18 +93,18 @@ const WS = {
 	subscribe: (serviceId, userId, channelId) => {
 		const connection = connectionMap.get(`${serviceId}-${userId}`);
 
-		if (!connection) {
-			// TODO : 클라이언트가 없으면 예외처리
-			return;
-		}
+		// TODO : 클라이언트가 없으면 예외처리
+		if (!connection) return;
 
 		connection.addChannelId(channelId);
 	},
 
 	publish: async (channelId, eventName, message) => {
-		for (const connection of connectionMap.keys()) {
+		for (const connection of connectionMap.values()) {
 			if (connection.channelIdSet.has(channelId))
-				sendMessage(connection.WS, eventName, message);
+				sendMessage(connection.WS, eventName, message).catch((err) => {
+					console.log("publish Error");
+				});
 		}
 	},
 };
