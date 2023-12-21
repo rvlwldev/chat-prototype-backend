@@ -4,7 +4,10 @@ const PORT = process.env.PORT || 3000;
 
 const express = require("express");
 const APP = express();
-const { initializeWebSocket } = require("./Utils/WebSocket");
+
+const bodyParser = require("body-parser");
+// JSON으로 요청 수신
+APP.use(bodyParser.json());
 
 // FORM DATA 수신
 APP.use(express.urlencoded());
@@ -13,8 +16,9 @@ APP.use(express.urlencoded());
 APP.use(require("./Configuration/CORS"));
 
 // SWAGGER
-const docs = require("./Configuration/Docs");
-APP.use("/docs", docs);
+// TODO : API 명세 작성
+const swaggerRouter = require("./Configuration/Documentation/DocumentationRouter");
+APP.use("/docs", swaggerRouter);
 
 APP.get("/", (req, res) => res.send({ connect: true, time: new Date() }));
 
@@ -27,8 +31,9 @@ APP.use("/channels", channel, message);
 
 const server = APP.listen(PORT, async () => {
 	const initializeData = require("./Configuration/Prisma/Seed");
-	await initializeData(true).catch((e) => console.log(e));
-	console.log(`서버가 포트:${PORT} 에서 실행중`);
+	await initializeData(false).catch((e) => console.log(e));
+	console.log(`서버가 ${PORT}번 포트에서 실행중`);
 });
 
-initializeWebSocket(server);
+const { openSocketWithServer } = require("./Utils/WebSocket");
+openSocketWithServer(server);

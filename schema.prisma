@@ -13,85 +13,87 @@
 // 
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+    provider = "mysql"
+    url      = env("DATABASE_URL")
 }
 
 model Role {
-  code Int    @id
-  name String
+    code Int    @id
+    name String
 }
 
 model Service {
-  id           String        @id
-  name         String
-  users        User[]
-  channels     Channel[]
-  userChannels UserChannel[]
+    id           String        @id
+    name         String
+    users        User[]
+    channels     Channel[]
+    userChannels UserChannel[]
 }
 
 model User {
-  serviceId           String
-  id                  String @id
-  password            String
-  name                String
-  role                Int    @default(1)
-  profileUserImageUrl String
+    serviceId           String?
+    id                  String   @id
+    password            String
+    name                String
+    role                Int      @default(1)
+    profileUserImageUrl String?
+    createdAt           DateTime
+    lastloggedInAt      DateTime
 
-  service      Service       @relation(fields: [serviceId], references: [id])
-  messages     Message[]     @relation("UserMessages")
-  userChannels UserChannel[]
+    service      Service?      @relation(fields: [serviceId], references: [id])
+    messages     Message[]     @relation("UserMessages")
+    userChannels UserChannel[]
 
-  @@unique([serviceId, id], name: "UserServiceId")
+    @@unique([serviceId, id], name: "UserServiceId")
 }
 
 model Channel {
-  id        String @id
-  serviceId String
-  name      String
-  type      String
+    serviceId String
+    id        String  @id
+    name      String?
+    type      String
 
-  service      Service       @relation(fields: [serviceId], references: [id])
-  messages     Message[]     @relation("ChannelMessages")
-  userChannels UserChannel[]
+    service      Service       @relation(fields: [serviceId], references: [id])
+    messages     Message[]     @relation("ChannelMessages")
+    userChannels UserChannel[]
 
-  @@unique([serviceId, id], name: "ChannelServiceId")
+    @@unique([serviceId, id], name: "ChannelServiceId")
 }
 
 model UserChannel {
-  serviceId String
-  userId    String
-  channelId String
-  readAt    DateTime
+    serviceId String
+    userId    String
+    channelId String
+    readAt    DateTime?
 
-  user    User    @relation(fields: [userId], references: [id])
-  channel Channel @relation(fields: [channelId], references: [id])
-  Service Service @relation(fields: [serviceId], references: [id])
+    user    User    @relation(fields: [userId], references: [id])
+    channel Channel @relation(fields: [channelId], references: [id])
+    Service Service @relation(fields: [serviceId], references: [id])
 
-  @@id([serviceId, userId, channelId])
-  @@unique([userId, channelId], name: "UserChannelKey")
+    @@id([serviceId, userId, channelId])
+    @@unique([userId, channelId], name: "UserChannelKey")
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
-  userId    String
-  channelId String
-  parentId  Int?
-  text      String?
-  type      String
-  filePath  String?
-  fileName  String?
-  fileSize  Int?
-  createdAt DateTime @default(now())
+    id        Int      @id @default(autoincrement())
+    userId    String
+    channelId String
+    parentId  Int?
+    text      String?
+    type      String
+    filePath  String?
+    fileName  String?
+    fileSize  Int?
+    createdAt DateTime @default(now())
 
-  user     User      @relation("UserMessages", fields: [userId], references: [id])
-  channel  Channel   @relation("ChannelMessages", fields: [channelId], references: [id])
-  parent   Message?  @relation("MessageComments", fields: [parentId], references: [id])
-  children Message[] @relation("MessageComments")
+    user     User      @relation("UserMessages", fields: [userId], references: [id])
+    channel  Channel   @relation("ChannelMessages", fields: [channelId], references: [id])
+    parent   Message?  @relation("MessageComments", fields: [parentId], references: [id])
+    children Message[] @relation("MessageComments")
 }
 
 // TODO : MessageType 모델 생성
