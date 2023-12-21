@@ -8,10 +8,8 @@ const options = (origin, callback) => {
 
 		"http://127.0.0.1:5500", // live server
 
-		undefined
+		undefined,
 	];
-
-	console.log("origin : " + origin + " " + allowedOrigins.includes(origin));
 
 	if (allowedOrigins.includes(origin)) callback(null, true);
 	else callback(new Error("Not allowed by CORS : " + origin));

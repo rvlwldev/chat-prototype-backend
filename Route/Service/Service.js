@@ -6,6 +6,7 @@ const JWT = require("../../Utils/JWT");
 
 const { HttpStatusCode } = require("axios");
 
+// NOTE : Service 생성
 ROUTER.post("", JWT.verify, async (req, res) => {
 	try {
 		if (req.userData.userRole != 99) {
@@ -35,6 +36,7 @@ ROUTER.post("", JWT.verify, async (req, res) => {
 	}
 });
 
+// NOTE : Service 조회
 ROUTER.get("", JWT.verify, async (req, res) => {
 	try {
 		if (req.userData.userRole != 99) {

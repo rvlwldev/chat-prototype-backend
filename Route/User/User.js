@@ -9,6 +9,7 @@ const ChannelController = require("../../Controller/Channel");
 const UserNotFoundException = require("../../Exception/User/UserNotFound");
 
 const { HttpStatusCode } = require("axios");
+const { WS } = require("../../Utils/WebSocket");
 
 // TODO : 에러처리
 ROUTER.post("/register", async (req, res) => {
@@ -35,8 +36,6 @@ ROUTER.post("/login", async (req, res) => {
 		res.status(HttpStatusCode.Ok).json(result);
 	} catch (err) {
 		// TODO : 비밀번호 틀림 Exception 만들기 (Unauthorized)
-		console.log(err);
-		console.log(err.message);
 		if (err instanceof UserNotFoundException) res.status(HttpStatusCode.NotFound).json(err);
 		else {
 			console.log(err);
@@ -54,14 +53,14 @@ ROUTER.get("/:userId/channels", JWT.verify, async (req, res) => {
 		const userId = req.userData.id;
 
 		const channels = await ChannelController.getChannelsByUserId(serviceId, userId);
+
+		for (const channel of channels) WS.subscribe(serviceId, userId, channel.id);
+
 		res.status(HttpStatusCode.Ok).json({ channels: channels });
 	} catch (err) {
 		if (err instanceof UserNotFoundException)
 			res.status(HttpStatusCode.NotFound).send(err.message);
-		else {
-			console.log(err);
-			res.status(HttpStatusCode.InternalServerError).send(err);
-		}
+		else res.status(HttpStatusCode.InternalServerError).send(err);
 	}
 });
 

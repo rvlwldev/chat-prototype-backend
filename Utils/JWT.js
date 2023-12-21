@@ -1,7 +1,7 @@
 const { HttpStatusCode } = require("axios");
-const JWT = require("jsonwebtoken");
+const JSON_WEB_TOKEN = require("jsonwebtoken");
 
-const token = {
+const JWT = {
 	generate: (user) => {
 		const payload = {
 			serviceId: user.serviceId,
@@ -12,23 +12,23 @@ const token = {
 		const secretKey = process.env.JWT_KEY;
 		const options = { expiresIn: "1h" };
 
-		return JWT.sign(payload, secretKey, options);
+		return JSON_WEB_TOKEN.sign(payload, secretKey, options);
 	},
 
 	verify: (req, res, next) => {
 		const token = req.headers.authorization;
 		const secretKey = process.env.JWT_KEY;
 
-		JWT.verify(token, secretKey, (err, decoded) => {
+		JSON_WEB_TOKEN.verify(token, secretKey, (err, decoded) => {
 			if (err) {
 				if (err.name === "TokenExpiredError")
 					return res
 						.status(HttpStatusCode.Unauthorized)
-						.json({ message: "토큰이 만료되었습니다." });
+						.json({ error: "토큰이 만료되었습니다." });
 				else
 					return res
 						.status(HttpStatusCode.Unauthorized)
-						.json({ message: "올바르지 않은 토큰입니다." });
+						.json({ error: "올바르지 않은 토큰입니다." });
 			}
 
 			req.userData = decoded;
@@ -37,4 +37,4 @@ const token = {
 	},
 };
 
-module.exports = token;
+module.exports = JWT;

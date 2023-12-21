@@ -1,94 +1,63 @@
 const express = require("express");
 const ROUTER = express.Router();
 
+const JWT = require("../../Utils/JWT");
+
 const { HttpStatusCode } = require("axios");
+const prisma = require("../../Utils/Prisma");
 
-/**
- * @swagger
- * tags:
- *   name: Channel
- *   description: 채널(채팅방)
- */
+const { v4: uuidv4 } = require("uuid");
 
-ROUTER.post("/", async (req, res) => {}); // TODO : 채널 생성
+// TODO : 채널 생성
+ROUTER.post("/", JWT.verify, async (req, res) => {
+	const { name: channelName, type } = req.body;
+	const { serviceId, id: userId, name, role } = req.userData;
 
-/**
- * @swagger
- * /channels/{channelId}/users:
- *   post:
- *     summary: 채널에 유저 추가
- *     tags: [Channel]
- *     parameters:
- *       - in: path
- *         name: channelId
- *         required: true
- *         description: 채널 ID
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: 채널 목록 조회 성공
- *         content:
- *           application/json:
- *             example:
- *               - id: "FIRST_TEST_OPEN_CHAT_CHANNEL01"
- *                 name: "테스트 전체 공개 채팅방01"
- *                 type: "super_public"
- *               - id: "userId1_userId2"
- *                 name: null
- *                 type: "private"
- */
-ROUTER.post("/:channelId/users", async (req, res) => {});
+	const channelId = uuidv4();
 
-/**
- * @swagger
- * /channels/{channelId}:
- *   get:
- *     summary: 채널 조회
- *     tags: [Channel]
- *     parameters:
- *       - in: path
- *         name: channelId
- *         required: true
- *         description: 채널 ID
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: 채널 조회 성공
- *         content:
- *           application/json:
- *             example:
- *               id: "FIRST_TEST_OPEN_CHAT_CHANNEL01"
- *               name: "테스트 전체 공개 채팅방01"
- *               type: "super_public"
- */
-ROUTER.get("/:channelId", async (req, res) => {});
+	try {
+		// 채널 생성
+		const createdChannel = await prisma.channel.create({
+			data: {
+				serviceId,
+				id: channelId,
+				name: channelName,
+				type,
+				userChannels: {
+					create: { serviceId, channelId, userId },
+				},
+			},
+		});
 
-/**
- * @swagger
- * /channels/{channelId}/users:
- *   get:
- *     summary: (미구현) 채널의 유저 목록 조회
- *     tags: [Channel]
- *     parameters:
- *       - in: path
- *         name: channelId
- *         required: true
- *         description: 채널 ID
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: 채널 유저 목록 조회 성공
- *         content:
- *           application/json:
- *             example:
- *               - id: "userId01"
- *                 name: "유저이름1"
- *               - id: "userId02"
- *                 name: "유저이름2"
- */
-ROUTER.get("/:channelId/users", async (req, res) => {});
+		res.status(HttpStatusCode.Created).json(createdChannel);
+	} catch (error) {
+		console.error("채널 생성 중 오류:", error);
+		res.status(HttpStatusCode.InternalServerError).json({
+			message: "채널 생성 중 오류가 발생했습니다.",
+		});
+	} finally {
+		await prisma.$disconnect();
+	}
+});
+
+// TODO: : 채널 접속
+ROUTER.post("/:channelId/", JWT.verify, async (req, res) => {});
+
+// TODO : 채널에 유저 초대
+ROUTER.post("/:channelId/users", JWT.verify, async (req, res) => {});
+
+// TODO : 채널 상세정보 조회
+ROUTER.get("/:channelId", JWT.verify, async (req, res) => {});
+
+// TODO : 채널 유저 목록 조회
+ROUTER.get("/:channelId/users", JWT.verify, async (req, res) => {});
+
+// TODO : 채널명 수정 (전체 공개 채널만, 권한확인필요)
+ROUTER.put("/:channelId/", JWT.verify, async (req, res) => {});
+
+// TODO : 채널 삭제
+// 개인채널 - 그냥 삭제
+// 공개채널 - 삭제 여부만 변경?
+ROUTER.delete("/:channelId/", JWT.verify, async (req, res) => {});
 
 module.exports = ROUTER;

@@ -4,9 +4,18 @@
         "title": "채팅 서버 프로토타입",
         "version": "0.0.1"
     },
+    "tags": [
+        {
+            "name": "Greeting",
+            "description": "Endpoints related to greeting messages"
+        }
+    ],
     "paths": {
         "/hello": {
             "get": {
+                "tags": [
+                    "Greeting"
+                ],
                 "summary": "Get a greeting message",
                 "responses": {
                     "200": {
@@ -14,12 +23,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
+                                    "$ref": "./Schema/test.json"
                                 }
                             }
                         }
