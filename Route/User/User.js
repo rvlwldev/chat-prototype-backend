@@ -6,40 +6,41 @@ const ServiceController = require("../../Controller/Service");
 const UserController = require("../../Controller/User");
 const ChannelController = require("../../Controller/Channel");
 
-const UserNotFoundException = require("../../Exception/User/UserNotFound");
+const UserExceptions = require("../../Exception/UserException");
 
 const { HttpStatusCode } = require("axios");
 const { WS } = require("../../Utils/WebSocket");
 
-// TODO : 에러처리
 ROUTER.post("/register", async (req, res) => {
 	try {
 		const { serviceId, id, password, name, role } = req.body;
 
 		const SERVICE = await ServiceController.getService(serviceId);
-		const USER = await UserController.createUser(serviceId, id, password, name, role);
+		const USER = await UserController.createUser(SERVICE, id, password, name, role);
 
 		res.status(HttpStatusCode.Created).json({ service: SERVICE, user: USER });
 	} catch (err) {
-		console.log(err);
-		res.status(HttpStatusCode.InternalServerError).json(err);
+		if (UserExceptions.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		else {
+			res.status(HttpStatusCode.InternalServerError).json(err);
+			console.log(err);
+		}
 	}
 });
 
 ROUTER.post("/login", async (req, res) => {
 	try {
-		let serviceId = req.body.serviceId;
-		let userId = req.body.user.id;
-		let password = req.body.user.password;
+		const SERVICE = await ServiceController.getService(req.body.serviceId);
+		const USER = await UserController.getUser(SERVICE, req.body.user.id);
 
-		const result = await UserController.getToken(serviceId, userId, password);
-		res.status(HttpStatusCode.Ok).json(result);
+		const LOGIN_INFO = await UserController.getToken(SERVICE, USER, req.body.user.password);
+
+		res.status(HttpStatusCode.Ok).json(LOGIN_INFO);
 	} catch (err) {
-		// TODO : 비밀번호 틀림 Exception 만들기 (Unauthorized)
-		if (err instanceof UserNotFoundException) res.status(HttpStatusCode.NotFound).json(err);
+		if (UserExceptions.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
 		else {
-			console.log(err);
 			res.status(HttpStatusCode.InternalServerError).json(err);
+			console.log(err);
 		}
 	}
 });

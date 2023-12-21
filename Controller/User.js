@@ -1,26 +1,29 @@
 const prisma = require("../Utils/Prisma");
-
 const bcrypt = require("bcrypt");
 
+const JWT = require("../Utils/JWT");
 const SALT_ROUND = 10;
 
-const UserNotFoundException = require("../Exception/User/UserNotFound");
-const JWT = require("../Utils/JWT");
-const ServiceController = require("./Service");
+const UserExceptions = require("../Exception/UserException");
 
 // TODO : User Exception 나누기
 const UserController = {
-	createUser: async (serviceId, id, password, name, role) => {
-		if (role == 99) {
-			throw new Error("관리자 계정은 생성할 수 없습니다.");
-		} else if (await UserController.getUser(serviceId, id)) {
-			throw new Error("중복된 아이디 입니다.");
-		}
+	createUser: async (SERVICE, id, password, name, role) => {
+		if (role == 99) throw new UserExceptions.InvalidRegister();
+
+		const USER = await UserController.getUser(SERVICE, id)
+			.then((user) => !!user)
+			.catch((err) => {
+				if (err instanceof UserExceptions.NotFound) return null;
+				else throw new Error(err);
+			});
+
+		if (USER) throw new UserExceptions.Duplicated();
 
 		return await prisma.user
 			.create({
 				data: {
-					serviceId: serviceId,
+					serviceId: SERVICE.id,
 					id: id,
 					password: bcrypt.hashSync(password, SALT_ROUND),
 					name: name,
@@ -36,41 +39,36 @@ const UserController = {
 			.finally(() => prisma.$disconnect());
 	},
 
-	getUser: async (serviceId, userId) => {
-		const SERVICE = await ServiceController.getService(serviceId);
-
+	getUser: async (SERVICE, userId) =>
 		await prisma.user
-			.findUnique({
-				where: {
-					service: SERVICE,
-					id: userId,
+			.findUniqueOrThrow({
+				where: { service: SERVICE, id: userId },
+				select: {
+					serviceId: true,
+					id: true,
+					name: true,
+					role: true,
+					profileUserImageUrl: true,
+					userChannels: true,
 				},
 			})
-			.then((user) => user)
 			.catch((err) => {
-				throw err;
+				throw new UserExceptions.NotFound();
+			})
+			.finally(() => prisma.$disconnect()),
+
+	getToken: async (SERVICE, USER, inputPW) => {
+		const PASSWORD = await prisma.user
+			.findUnique({ where: { service: SERVICE, id: USER.id } })
+			.then((user) => user.password)
+			.catch(() => {
+				throw new UserExceptions.NotFound();
 			})
 			.finally(() => prisma.$disconnect());
-	},
 
-	getToken: async (serviceId, userId, inputPW) => {
-		const USERINFO = await prisma.user
-			.findUnique({ where: { serviceId: serviceId, id: userId } })
-			.catch(() => null);
-		if (!USERINFO) throw new UserNotFoundException();
+		if (!bcrypt.compareSync(inputPW, PASSWORD)) throw new UserExceptions.InvalidPassword();
 
-		const PW_MATCH = bcrypt.compareSync(inputPW, USERINFO.password);
-		if (!PW_MATCH) throw new Error("비밀번호가 틀렸음");
-
-		const { password, ...USER } = USERINFO;
-
-		return {
-			service: await prisma.service
-				.findUnique({ where: { id: serviceId } })
-				.finally(() => prisma.$disconnect()),
-			user: USER,
-			token: JWT.generate(USER),
-		};
+		return JWT.generate(USER);
 	},
 };
 
