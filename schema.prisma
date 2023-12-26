@@ -21,25 +21,26 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Role {
-    code Int    @id
-    name String
-}
-
 model Service {
-    id           String        @id
-    name         String
+    id   String @id
+    name String
+
     users        User[]
     channels     Channel[]
     userChannels UserChannel[]
 }
 
+model Role {
+    id   Int    @id
+    name String
+}
+
 model User {
-    serviceId           String?
+    serviceId           String
     id                  String   @id
     password            String
     name                String
-    role                Int      @default(1)
+    role                Int      @default(2)
     profileUserImageUrl String?
     createdAt           DateTime
     lastloggedInAt      DateTime
@@ -48,12 +49,12 @@ model User {
     messages     Message[]     @relation("UserMessages")
     userChannels UserChannel[]
 
-    @@unique([serviceId, id], name: "UserServiceId")
+    @@unique([serviceId, id], name: "ServiceUserId")
 }
 
 model Channel {
     serviceId String
-    id        String  @id
+    id        String
     name      String?
     type      String
 
@@ -61,7 +62,7 @@ model Channel {
     messages     Message[]     @relation("ChannelMessages")
     userChannels UserChannel[]
 
-    @@unique([serviceId, id], name: "ChannelServiceId")
+    @@id([serviceId, id], name: "ChannelPK")
 }
 
 model UserChannel {
@@ -70,16 +71,16 @@ model UserChannel {
     channelId String
     readAt    DateTime?
 
-    user    User    @relation(fields: [userId], references: [id])
-    channel Channel @relation(fields: [channelId], references: [id])
-    Service Service @relation(fields: [serviceId], references: [id])
+    service Service @relation(fields: [serviceId], references: [id])
+    user    User    @relation(fields: [serviceId, userId], references: [serviceId, id])
+    channel Channel @relation(fields: [serviceId, channelId], references: [serviceId, id])
 
     @@id([serviceId, userId, channelId])
-    @@unique([userId, channelId], name: "UserChannelKey")
 }
 
 model Message {
     id        Int      @id @default(autoincrement())
+    serviceId String
     userId    String
     channelId String
     parentId  Int?
@@ -91,7 +92,7 @@ model Message {
     createdAt DateTime @default(now())
 
     user     User      @relation("UserMessages", fields: [userId], references: [id])
-    channel  Channel   @relation("ChannelMessages", fields: [channelId], references: [id])
+    channel  Channel   @relation("ChannelMessages", fields: [serviceId, channelId], references: [serviceId, id])
     parent   Message?  @relation("MessageComments", fields: [parentId], references: [id])
     children Message[] @relation("MessageComments")
 }
