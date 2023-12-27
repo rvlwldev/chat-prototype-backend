@@ -1,17 +1,13 @@
-const { channel } = require("diagnostics_channel");
 const ChannelException = require("../Exception/ChannelException");
 const prisma = require("../Utils/Prisma");
 
-const ServiceController = require("./Service");
-const UserController = require("./User");
+const { v4: UUID4 } = require("uuid");
 
-const { v4: uuidv4 } = require("uuid");
-
-// TODO : param 수정
+// TODO : 모든경로에서 service, channelId 모두 파라미터로 받기, 메소드 재사용으로 코드 줄이기
 const ChannelController = {
-	getChannelById: async (channelId) =>
+	getChannelById: async (SERVICE, channelId) =>
 		await prisma.channel
-			.findUnique({ where: { id: channelId } })
+			.findUnique({ where: { service: SERVICE, id: channelId } })
 			.catch((err) => {
 				if (err.code == "P2020") throw new ChannelException.NotFound();
 			})
@@ -23,10 +19,12 @@ const ChannelController = {
 				where: { Service: SERVICE, user: USER },
 				select: { channel: true },
 			})
+			.catch((err) => {
+				if (err.code == "P2001") throw new ChannelException.NotFound();
+			})
 			.finally(() => prisma.$disconnect()),
 
 	saveChannel: async (SERVICE, USER, type, name) => {
-		// TODO : 채널타입 모델링
 		if (type.includes("public")) {
 			if (USER.role.id < 9) throw new ChannelException.NotAllowed();
 			else if (!name) throw new ChannelException.NameRequired();
@@ -37,7 +35,7 @@ const ChannelController = {
 			});
 		}
 
-		let channelId = uuidv4().substring(0, 12);
+		let channelId = UUID4().substring(0, 12);
 
 		const newChannel = await prisma.channel.create({
 			data: {
