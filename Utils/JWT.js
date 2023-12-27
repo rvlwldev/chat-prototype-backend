@@ -2,20 +2,15 @@ const { HttpStatusCode } = require("axios");
 const JSON_WEB_TOKEN = require("jsonwebtoken");
 
 const JWT = {
-	generate: (user) => {
-		const payload = {
-			serviceId: user.serviceId,
-			id: user.id,
-			name: user.name,
-			role: user.role,
-		};
+	generate: (SERVICE, USER) => {
+		const payload = { service: SERVICE, user: USER };
 		const secretKey = process.env.JWT_KEY;
 		const options = { expiresIn: "1h" };
 
 		return JSON_WEB_TOKEN.sign(payload, secretKey, options);
 	},
 
-	verify: (req, res, next) => {
+	verify: async (req, res, next) => {
 		const token = req.headers.authorization;
 		const secretKey = process.env.JWT_KEY;
 
@@ -31,7 +26,9 @@ const JWT = {
 						.json({ error: "올바르지 않은 토큰입니다." });
 			}
 
-			req.userData = decoded;
+			req.USER = decoded.user;
+			req.SERVICE = decoded.service;
+
 			next();
 		});
 	},
