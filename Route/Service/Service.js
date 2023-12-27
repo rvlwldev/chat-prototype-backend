@@ -1,56 +1,36 @@
 const express = require("express");
 const ROUTER = express.Router();
 
-const prisma = require("../../Utils/Prisma");
 const JWT = require("../../Utils/JWT");
+
+const ServiceController = require("../../Controller/Service");
+const ServiceException = require("../../Exception/ServiceException");
 
 const { HttpStatusCode } = require("axios");
 
-// NOTE : Service 생성
-ROUTER.post("", JWT.verify, async (req, res) => {
+ROUTER.post("/", JWT.verify, ServiceController.authenticate, async (req, res) => {
 	try {
-		if (req.userData.userRole != 99) {
-			res.status(HttpStatusCode.Forbidden).json({ message: "권한이 없습니다." });
-			return;
-		}
-
-		let serviceId = req.body.serviceId;
-		let serviceName = req.body.serviceName;
-
-		if (!serviceId || !serviceName) {
-			res.status(HttpStatusCode.BadRequest).json({ message: "Invalid Parameters" });
-			return;
-		}
-
-		let count = await prisma.service.count({ where: { id: serviceId } });
-
-		if (count > 0) {
-			res.status(HttpStatusCode.Conflict).json({ message: "중복된 서비스 아이디입니다." });
-			return;
-		}
+		const SERVICE = await ServiceController.saveService(req.USER, req.body.name, req.body.id);
+		res.status(HttpStatusCode.Created).json(SERVICE);
 	} catch (err) {
-		console.error("에러 발생:", err);
-		res.status(500).json({ message: "서버 에러" });
-	} finally {
-		await prisma.$disconnect();
+		if (ServiceException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
 	}
 });
 
-// NOTE : Service 조회
-ROUTER.get("", JWT.verify, async (req, res) => {
+ROUTER.get("/:serviceId", JWT.verify, ServiceController.authenticate, async (req, res) => {
 	try {
-		if (req.userData.userRole != 99) {
-			res.status(HttpStatusCode.Forbidden).json({ message: "권한이 없습니다." });
-			return;
-		}
-
-		const Service = await prisma.service.findMany();
-		res.status(HttpStatusCode.Ok).json(Service);
+		const SERVICE = await ServiceController.getService(req.params.serviceId);
+		res.status(HttpStatusCode.Ok).json(SERVICE);
 	} catch (err) {
-		console.error("에러 발생:", err);
-		res.status(500).json({ message: "서버 에러" });
-	} finally {
-		await prisma.$disconnect();
+		if (ServiceException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+	}
+});
+
+ROUTER.get("/", JWT.verify, ServiceController.authenticate, async (req, res) => {
+	try {
+		res.status(HttpStatusCode.Ok).json(await ServiceController.getAllService());
+	} catch (err) {
+		if (ServiceException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
 	}
 });
 

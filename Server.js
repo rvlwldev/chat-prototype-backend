@@ -2,10 +2,6 @@ require("dotenv").config();
 
 const PORT = process.env.PORT || 3000;
 
-require("dotenv").config();
-
-const PORT = process.env.PORT || 3000;
-
 const express = require("express");
 const APP = express();
 
@@ -26,8 +22,12 @@ APP.use("/docs", swaggerRouter);
 
 APP.get("/", (req, res) => res.send({ connect: true, time: new Date() }));
 
+const service = require("./Route/Service/Service");
+APP.use("/services", service);
+
+const auth = require("./Route/User/Auth");
 const user = require("./Route/User/User");
-APP.use("/users", user);
+APP.use("/users", auth, user);
 
 const channel = require("./Route/Chat/Channel");
 const message = require("./Route/Chat/Message");
@@ -36,7 +36,8 @@ APP.use("/channels", channel, message);
 
 const server = APP.listen(PORT, async () => {
 	const initializeData = require("./Configuration/Prisma/Seed");
-	await initializeData(false).catch((e) => console.log(e));
+
+	await initializeData(true).catch((e) => console.log(e));
 	console.log(`서버가 ${PORT}번 포트에서 실행중`);
 });
 
