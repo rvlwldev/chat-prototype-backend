@@ -4,7 +4,7 @@ const MESSAGES = {
 	NOT_FOUND: "찾을 수 없는 유저 아이디입니다.",
 	INVALID_PASSWORD: "잘못된 비밀번호입니다.",
 	DUPLICATED_ID: "이미 존재하는 아이디입니다.",
-	INVALID_REGISTER: "해당 계정은 생성할 수 없습니다.",
+	INVALID_REGISTER: "해당 계정은 직접 생성할 수 없습니다.",
 };
 
 const UserExceptions = {
@@ -22,14 +22,6 @@ const UserExceptions = {
 		}
 	},
 
-	InvalidPassword: class extends Error {
-		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.Unauthorized;
-			this.message = message || MESSAGES.INVALID_PASSWORD;
-		}
-	},
-
 	Duplicated: class extends Error {
 		constructor(message) {
 			super();
@@ -38,7 +30,15 @@ const UserExceptions = {
 		}
 	},
 
-	InvalidRegister: class extends Error {
+	InvalidPassword: class extends Error {
+		constructor(message) {
+			super();
+			this.httpStatusCode = HttpStatusCode.Unauthorized;
+			this.message = message || MESSAGES.INVALID_PASSWORD;
+		}
+	},
+
+	InvalidRole: class extends Error {
 		constructor(message) {
 			super();
 			this.httpStatusCode = HttpStatusCode.BadRequest;

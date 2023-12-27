@@ -6,10 +6,9 @@ const SALT_ROUND = 10;
 
 const UserExceptions = require("../Exception/UserException");
 
-// TODO : User Exception 나누기
 const UserController = {
 	createUser: async (SERVICE, id, password, name, role) => {
-		if (role == 99) throw new UserExceptions.InvalidRegister();
+		if (role >= 9) throw new UserExceptions.InvalidRole();
 
 		const USER = await UserController.getUser(SERVICE, id)
 			.then((user) => !!user)
@@ -49,11 +48,35 @@ const UserController = {
 					name: true,
 					role: true,
 					profileUserImageUrl: true,
-					userChannels: true,
 				},
 			})
 			.catch((err) => {
 				throw new UserExceptions.NotFound();
+			})
+			.finally(() => prisma.$disconnect()),
+
+	getUsers: async (SERVICE, userIdArray) => {
+		await prisma.user
+			.findMany({
+				where: {
+					service: SERVICE,
+					id: { in: userIdArray },
+				},
+			})
+			.finally(() => prisma.$disconnect());
+	},
+
+	getUsersByService: async (SERVICE) =>
+		await prisma.user.findMany({ where: { service: SERVICE } }),
+
+	getUsersByChannel: async (SERVICE, CHANNEL) =>
+		await prisma.userChannel
+			.findMany({
+				where: {
+					service: SERVICE,
+					channel: CHANNEL,
+				},
+				select: { user: true },
 			})
 			.finally(() => prisma.$disconnect()),
 
@@ -68,7 +91,7 @@ const UserController = {
 
 		if (!bcrypt.compareSync(inputPW, PASSWORD)) throw new UserExceptions.InvalidPassword();
 
-		return JWT.generate(USER);
+		return JWT.generate(SERVICE, USER);
 	},
 };
 
