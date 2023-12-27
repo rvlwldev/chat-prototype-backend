@@ -1,13 +1,95 @@
 const ROUTER = require("express").Router();
-const path = require("path");
-
 const JWT = require("../../Utils/JWT");
 
+const MessageController = require("../../Controller/Message");
+
+const ChannelException = require("../../Exception/ChannelException");
+
+const { WS } = require("../../Utils/WebSocket");
 const { HttpStatusCode } = require("axios");
 
-// TODO : WS 처리, 댓글처리
-ROUTER.post("/:channelId/messages", JWT.verify, async (req, res) => {});
+// TODO : 메세지 예외처리
 
+ROUTER.post("/:channelId/message", JWT.verify, async (req, res) => {
+	try {
+		let channelId = req.params.channelId;
+		let text = req.body.text;
+		let parentId = req.body.parentId;
+
+		var MESSAGE;
+		if (parentId) {
+			MESSAGE = await MessageController.saveMessage(req.SERVICE, channelId, text, parentId);
+		} else {
+			MESSAGE = await MessageController.saveMessage(req.SERVICE, channelId, text);
+		}
+
+		WS.publish(req.SERVICE.id, channelId, MESSAGE);
+
+		res.status(HttpStatusCode.Created).json(MESSAGE);
+	} catch (err) {}
+});
+
+// TODO : 파일 메세지 전송 (+댓글)
+ROUTER.post("/:channelId/file/message", JWT.verify, async (req, res) => {});
+
+ROUTER.get("/:channelId/:messageId", JWT.verify, async (req, res) => {
+	try {
+		const MESSAGE = await MessageController.getMessageById(
+			req.SERVICE,
+			req.params.channelId,
+			req.params.messageId
+		);
+
+		res.status(HttpStatusCode.Ok).json(MESSAGE);
+	} catch (error) {
+		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+	}
+});
+
+ROUTER.get("/:channelId/messages", JWT.verify, async (req, res) => {
+	try {
+		const MESSAGES = await MessageController.getMessages(
+			req.SERVICE,
+			req.body.channelId,
+			req.body.lastMessageId,
+			req.body.order,
+			req.body.limit
+		);
+
+		res.status(HttpStatusCode.Ok).json(MESSAGES);
+	} catch (err) {
+		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+	}
+});
+
+// TODO : 메세지 읽음 처리
+ROUTER.patch("/:channelId/read", JWT.verify, async (req, res) => {});
+
+ROUTER.put("/:channelId/message", JWT.verify, async (req, res) => {
+	try {
+		const MESSAGE = await MessageController.updateMessage(
+			req.SERVICE,
+			req.body.channelId,
+			req.body.messageId,
+			req.body.text
+		);
+
+		res.status(HttpStatusCode.Ok).json(MESSAGE);
+	} catch (err) {}
+});
+
+// TODO : 메세지 삭제
+ROUTER.delete("/:channelId/message", JWT.verify, async (req, res) => {
+	try {
+		await MessageController.deleteMessage(req.SERVICE, req.body.channelId, req.body.messageId);
+		res.status(HttpStatusCode.NoContent).end();
+	} catch (err) {}
+});
+
+// TODO: 메세지 검색
+ROUTER.get("/:channelId/message", JWT.verify, async (req, res) => {});
+
+////// BACKUP
 async function sendFileMessage(req, res) {
 	const channelId = req.params.channelId;
 
@@ -27,35 +109,5 @@ async function sendTextMesasge(req, res) {
 	if (result) res.status(HttpStatusCode.Created).send(result);
 	else res.status(HttpStatusCode.InternalServerError).end();
 }
-ROUTER.get("/:channelId/messages", JWT.verify, async (req, res) => {
-	const channelId = req.params.channelId;
-	const lastMessageId = req.query.lastMessageId;
-	const order = req.query.order;
-
-	const messages = await MessageService.getMessages(channelId, lastMessageId, order);
-	res.status(HttpStatusCode.Ok).send(messages);
-});
-
-// TODO : 읽음 처리
-ROUTER.get("/:channelId/messages/:messageId", JWT.verify, async (req, res) => {
-	const channelId = req.params.channelId;
-	const messageId = req.params.messageId;
-
-	const message = await MessageService.getMessagebyIds(channelId, messageId);
-	res.status(HttpStatusCode.Ok).send(message);
-});
-
-ROUTER.get("/:channelId/files/:fileName", JWT.verify, (req, res) => {
-	let filePath = path.join(
-		__dirname,
-		"../..",
-		"File",
-		"message",
-		req.params.channelId,
-		req.params.fileName
-	);
-
-	res.sendFile(filePath);
-});
 
 module.exports = ROUTER;
