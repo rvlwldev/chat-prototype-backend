@@ -9,12 +9,6 @@ const MESSAGES = {
 };
 
 const UserExceptions = {
-	isInstanceOf: (err) => {
-		const types = Object.values(UserExceptions).filter((e) => e.prototype instanceof Error);
-		for (const type of types) if (err instanceof type) return true;
-		return false;
-	},
-
 	NotFound: class extends Exception {
 		constructor(message) {
 			super(message || MESSAGES.NOT_FOUND, HttpStatusCode.NotFound);
