@@ -2,8 +2,8 @@ const prisma = require("../Utils/Prisma");
 
 const ChannelController = require("./Channel");
 
-const MessageException = require("../Exception/MessageException");
-const ChannelException = require("../Exception/ChannelException");
+const MessageException = require("../Exception/Chat/MessageException");
+const ChannelException = require("../Exception/Chat/ChannelException");
 
 // TODO : prisma 에러 코드 상수화 및 구현
 // TODO : MessageException 구현
@@ -30,7 +30,7 @@ const MessageController = {
 				},
 			})
 			.catch((err) => {
-				if (err.code == "P2001") throw new Error();
+				if (err.code == "P2001") throw new MessageException.NotFound();
 			}),
 
 	getMessages: async (SERVICE, channelId, lastMessageId, order = "asc", limit = 100) => {

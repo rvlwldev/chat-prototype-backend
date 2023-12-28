@@ -4,17 +4,19 @@ const bcrypt = require("bcrypt");
 const JWT = require("../Utils/JWT");
 const SALT_ROUND = 10;
 
-const UserExceptions = require("../Exception/UserException");
+const UserExceptions = require("../Exception/User/UserException");
+
+const Exception = require("../Exception/Exception");
 
 const UserController = {
-	createUser: async (SERVICE, id, password, name, role) => {
+	createUser: async (serviceId, id, password, name, role) => {
 		if (role >= 9) throw new UserExceptions.InvalidRole();
 
-		const USER = await UserController.getUser(SERVICE, id)
+		const USER = await UserController.getUser(serviceId, id)
 			.then((user) => !!user)
 			.catch((err) => {
 				if (err instanceof UserExceptions.NotFound) return null;
-				else throw new Error(err);
+				else throw new Exception(err.message);
 			});
 
 		if (USER) throw new UserExceptions.Duplicated();
@@ -22,7 +24,7 @@ const UserController = {
 		return await prisma.user
 			.create({
 				data: {
-					serviceId: SERVICE.id,
+					serviceId: serviceId,
 					id: id,
 					password: bcrypt.hashSync(password, SALT_ROUND),
 					name: name,
@@ -84,8 +86,9 @@ const UserController = {
 		const PASSWORD = await prisma.user
 			.findUnique({ where: { service: SERVICE, id: USER.id } })
 			.then((user) => user.password)
-			.catch(() => {
-				throw new UserExceptions.NotFound();
+			.catch((err) => {
+				if (err.code == "P2001") throw new UserExceptions.NotFound();
+				else throw new Exception(err.message, err.code);
 			})
 			.finally(() => prisma.$disconnect());
 

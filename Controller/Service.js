@@ -1,7 +1,7 @@
 const prisma = require("../Utils/Prisma");
 const { v4: UUID4 } = require("uuid");
 
-const ServiceException = require("../Exception/ServiceException");
+const ServiceException = require("../Exception/Service/ServiceException");
 
 const ServiceController = {
 	authenticate: async (req, res, next) => {
@@ -13,19 +13,21 @@ const ServiceController = {
 		if (!id) id = UUID4();
 		if (!name) throw new ServiceException.MissingRequiredValues();
 
-		await prisma.service.findFirst({ where: { id: id } }).then((service) => {
-			if (service) throw new ServiceException.Duplicated();
-		});
-
 		return await prisma.service
-			.create({
-				data: { id: id, name: name, users: [USER] },
-				select: { id: true, name: true },
+			.findFirst({ where: { id: id } })
+			.then((service) => {
+				if (service) throw new ServiceException.Duplicated();
+			})
+			.then(async () => {
+				return await prisma.service.create({
+					data: { id: id, name: name, users: [USER] },
+					select: { id: true, name: true },
+				});
 			})
 			.finally(() => prisma.$disconnect());
 	},
 
-	getService: async (serviceId) =>
+	getServiceById: async (serviceId) =>
 		await prisma.service
 			.findUnique({
 				where: { id: serviceId },

@@ -12,8 +12,8 @@ ROUTER.post("/register", async (req, res) => {
 	try {
 		const { serviceId, id, password, name, role } = req.body;
 
-		const SERVICE = await ServiceController.getService(serviceId);
-		const USER = await UserController.createUser(SERVICE, id, password, name, role);
+		const SERVICE = await ServiceController.getServiceById(serviceId);
+		const USER = await UserController.createUser(serviceId, id, password, name, role);
 
 		res.status(HttpStatusCode.Created).json({ service: SERVICE, user: USER });
 	} catch (err) {
@@ -27,7 +27,7 @@ ROUTER.post("/register", async (req, res) => {
 
 ROUTER.post("/login", async (req, res) => {
 	try {
-		const SERVICE = await ServiceController.getService(req.body.serviceId);
+		const SERVICE = await ServiceController.getServiceById(req.body.serviceId);
 		const USER = await UserController.getUser(SERVICE, req.body.user.id);
 		const TOKEN = await UserController.getToken(SERVICE, USER, req.body.user.password);
 

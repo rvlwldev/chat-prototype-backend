@@ -1,4 +1,4 @@
-const ChannelException = require("../Exception/ChannelException");
+const ChannelException = require("../Exception/Chat/ChannelException");
 const prisma = require("../Utils/Prisma");
 
 const { v4: UUID4 } = require("uuid");
