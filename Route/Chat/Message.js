@@ -115,25 +115,4 @@ ROUTER.delete("/:channelId/message", JWT.verify, async (req, res) => {
 // TODO: 메세지 검색
 ROUTER.get("/:channelId/message", JWT.verify, async (req, res) => {});
 
-////// BACKUP
-async function sendFileMessage(req, res) {
-	const channelId = req.params.channelId;
-
-	let result = await MessageService.addFileMessage(channelId, req);
-
-	if (result) res.status(HttpStatusCode.Created).send(result);
-	else res.status(HttpStatusCode.InternalServerError).end();
-}
-
-async function sendTextMesasge(req, res) {
-	const channelId = req.params.channelId;
-	const senderId = req.body.senderId;
-	const text = req.body.text;
-
-	let result = await MessageService.addTextMessage(channelId, senderId, text);
-
-	if (result) res.status(HttpStatusCode.Created).send(result);
-	else res.status(HttpStatusCode.InternalServerError).end();
-}
-
 module.exports = ROUTER;
