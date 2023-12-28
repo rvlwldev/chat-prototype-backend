@@ -4,7 +4,7 @@ const ROUTER = express.Router();
 const ServiceController = require("../../Controller/Service");
 const UserController = require("../../Controller/User");
 
-const UserExceptions = require("../../Exception/UserException");
+const UserExceptions = require("../../Exception/User/UserException");
 
 const { HttpStatusCode } = require("axios");
 
@@ -33,7 +33,7 @@ ROUTER.post("/login", async (req, res) => {
 
 		res.status(HttpStatusCode.Ok).json({ service: SERVICE, user: USER, token: TOKEN });
 	} catch (err) {
-		if (UserExceptions.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);

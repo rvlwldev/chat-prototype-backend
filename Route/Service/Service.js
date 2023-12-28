@@ -4,7 +4,6 @@ const ROUTER = express.Router();
 const JWT = require("../../Utils/JWT");
 
 const ServiceController = require("../../Controller/Service");
-const ServiceException = require("../../Exception/ServiceException");
 
 const { HttpStatusCode } = require("axios");
 
@@ -13,7 +12,11 @@ ROUTER.post("/", JWT.verify, ServiceController.authenticate, async (req, res) =>
 		const SERVICE = await ServiceController.saveService(req.USER, req.body.name, req.body.id);
 		res.status(HttpStatusCode.Created).json(SERVICE);
 	} catch (err) {
-		if (ServiceException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
+		else {
+			res.status(HttpStatusCode.InternalServerError).json(err);
+			console.log(err);
+		}
 	}
 });
 
@@ -22,7 +25,11 @@ ROUTER.get("/:serviceId", JWT.verify, ServiceController.authenticate, async (req
 		const SERVICE = await ServiceController.getService(req.params.serviceId);
 		res.status(HttpStatusCode.Ok).json(SERVICE);
 	} catch (err) {
-		if (ServiceException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
+		else {
+			res.status(HttpStatusCode.InternalServerError).json(err);
+			console.log(err);
+		}
 	}
 });
 
@@ -30,7 +37,11 @@ ROUTER.get("/", JWT.verify, ServiceController.authenticate, async (req, res) => 
 	try {
 		res.status(HttpStatusCode.Ok).json(await ServiceController.getAllService());
 	} catch (err) {
-		if (ServiceException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
+		else {
+			res.status(HttpStatusCode.InternalServerError).json(err);
+			console.log(err);
+		}
 	}
 });
 

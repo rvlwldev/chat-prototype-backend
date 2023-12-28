@@ -8,8 +8,8 @@ const { HttpStatusCode } = require("axios");
 const ChannelController = require("../../Controller/Channel");
 const UserController = require("../../Controller/User");
 
-const ChannelException = require("../../Exception/ChannelException");
-const UserExceptions = require("../../Exception/UserException");
+const ChannelException = require("../../Exception/Chat/ChannelException");
+const UserExceptions = require("../../Exception/User/UserException");
 
 // TODO : 모든경로에서 :channelId 모두 파라미터로 집어넣기, 객체조회말고....
 ROUTER.post("/", JWT.verify, async (req, res) => {
@@ -19,7 +19,7 @@ ROUTER.post("/", JWT.verify, async (req, res) => {
 
 		res.status(HttpStatusCode.Created).json({ channel: CHANNEL });
 	} catch (err) {
-		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
@@ -34,7 +34,7 @@ ROUTER.post("/:channelId/", JWT.verify, async (req, res) => {
 
 		res.status(HttpStatusCode.Ok).json(CHANNEL);
 	} catch (err) {
-		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
@@ -54,8 +54,7 @@ ROUTER.post("/:channelId/users", JWT.verify, async (req, res) => {
 
 		res.status(HttpStatusCode.Created).json(USERS);
 	} catch (err) {
-		if (UserExceptions.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
-		else if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
@@ -68,7 +67,7 @@ ROUTER.get("/:channelId", JWT.verify, async (req, res) => {
 		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
 		res.status(HttpStatusCode.Ok).json(CHANNEL);
 	} catch (err) {
-		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
@@ -83,7 +82,7 @@ ROUTER.get("/:channelId/users", JWT.verify, async (req, res) => {
 
 		res.status(HttpStatusCode.Ok).json(USERS);
 	} catch (err) {
-		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
@@ -106,7 +105,7 @@ ROUTER.patch("/:channelId/", JWT.verify, async (req, res) => {
 
 		res.status(HttpStatusCode.Accepted).json(UPDATED_CHANNEL);
 	} catch (err) {
-		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
@@ -122,7 +121,7 @@ ROUTER.delete("/:channelId/", JWT.verify, async (req, res) => {
 		await ChannelController.deleteChannel(req.SERVICE, req.USER, req.params.channelId);
 		res.status(HttpStatusCode.NoContent).end();
 	} catch (err) {
-		if (ChannelException.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);
