@@ -57,14 +57,11 @@ const ChannelController = {
 		return newChannel;
 	},
 
-	saveUserChannel: async (SERVICE, CHANNEL, USER) =>
+	saveUserChannel: async (SERVICE, USER, CHANNEL) =>
 		await prisma.userChannel
 			.create({
-				data: {
-					service: SERVICE,
-					channel: CHANNEL,
-					user: USER,
-				},
+				data: { service: SERVICE, channel: CHANNEL, user: USER },
+				select: { channel: true, user: true },
 			})
 			.catch((err) => {
 				console.log("saveUserChannel ERROR");
@@ -72,7 +69,7 @@ const ChannelController = {
 			})
 			.finally(() => prisma.$disconnect()),
 
-	saveUserChannels: async (SERVICE, CHANNEL, USERS) =>
+	saveUserChannels: async (SERVICE, USERS, CHANNEL) =>
 		await prisma.userChannel
 			.createMany({
 				data: USERS.map((USER) => {
@@ -85,6 +82,18 @@ const ChannelController = {
 			})
 			.finally(() => prisma.$disconnect()),
 
+	updateChannel: async (SERVICE, CHANNEL, data) =>
+		await prisma.channel.update({
+			where: { service: SERVICE, id: CHANNEL.id },
+			data: data,
+			select: {
+				service: false,
+				id: true,
+				name: true,
+				type: true,
+			},
+		}),
+
 	updateChannelName: async (SERVICE, CHANNEL, name) =>
 		await prisma.channel.update({
 			where: { service: SERVICE, id: CHANNEL.id },
@@ -94,6 +103,18 @@ const ChannelController = {
 				id: true,
 				name: true,
 				type: true,
+			},
+		}),
+
+	updateUserChannel: async (SERVICE, CHANNEL, data) =>
+		await prisma.userChannel.update({
+			where: { service: SERVICE, id: CHANNEL.id },
+			data: data,
+			select: {
+				service: false,
+				channel: true,
+				user: true,
+				readAt: true,
 			},
 		}),
 

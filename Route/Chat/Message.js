@@ -1,11 +1,9 @@
 const ROUTER = require("express").Router();
-
 const JWT = require("../../Utils/JWT");
 
 const MessageController = require("../../Controller/Message");
 
-const { WS } = require("../../Utils/WebSocket");
-
+const WS = require("../../Utils/WebSocket");
 const { HttpStatusCode } = require("axios");
 
 // TODO : 메세지 예외처리
@@ -23,7 +21,7 @@ ROUTER.post("/:channelId/message", JWT.verify, async (req, res) => {
 			MESSAGE = await MessageController.saveMessage(req.SERVICE, channelId, text);
 		}
 
-		WS.publish(req.SERVICE.id, channelId, MESSAGE);
+		WS.publish(req.SERVICE.id, channelId, event.MESSAGE_SEND, MESSAGE);
 
 		res.status(HttpStatusCode.Created).json(MESSAGE);
 	} catch (err) {
@@ -76,9 +74,6 @@ ROUTER.get("/:channelId/messages", JWT.verify, async (req, res) => {
 	}
 });
 
-// TODO : 메세지 읽음 처리
-ROUTER.patch("/:channelId/read", JWT.verify, async (req, res) => {});
-
 ROUTER.put("/:channelId/message", JWT.verify, async (req, res) => {
 	try {
 		const MESSAGE = await MessageController.updateMessage(
@@ -87,6 +82,8 @@ ROUTER.put("/:channelId/message", JWT.verify, async (req, res) => {
 			req.body.messageId,
 			req.body.text
 		);
+
+		WS.publish(req.SERVICE.id, channelId, event.MESSAGE_UPDATE, MESSAGE);
 
 		res.status(HttpStatusCode.Ok).json(MESSAGE);
 	} catch (err) {
@@ -102,6 +99,9 @@ ROUTER.put("/:channelId/message", JWT.verify, async (req, res) => {
 ROUTER.delete("/:channelId/message", JWT.verify, async (req, res) => {
 	try {
 		await MessageController.deleteMessage(req.SERVICE, req.body.channelId, req.body.messageId);
+
+		WS.publish(req.SERVICE.id, channelId, event.MESSAGE_DELETE, MESSAGE);
+
 		res.status(HttpStatusCode.NoContent).end();
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);

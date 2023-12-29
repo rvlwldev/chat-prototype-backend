@@ -1,12 +1,10 @@
-const express = require("express");
-const ROUTER = express.Router();
+const ROUTER = require("express").Router();
 
 const ServiceController = require("../../Controller/Service");
 const UserController = require("../../Controller/User");
 
-const UserExceptions = require("../../Exception/User/UserException");
-
 const { HttpStatusCode } = require("axios");
+const Exception = require("../../Exception/Exception");
 
 ROUTER.post("/register", async (req, res) => {
 	try {
@@ -17,7 +15,7 @@ ROUTER.post("/register", async (req, res) => {
 
 		res.status(HttpStatusCode.Created).json({ service: SERVICE, user: USER });
 	} catch (err) {
-		if (UserExceptions.isInstanceOf(err)) res.status(err.httpStatusCode).json(err);
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
 			res.status(HttpStatusCode.InternalServerError).json(err);
 			console.log(err);

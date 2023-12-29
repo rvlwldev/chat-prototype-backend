@@ -1,6 +1,4 @@
-const express = require("express");
-const ROUTER = express.Router();
-
+const ROUTER = require("express").Router();
 const JWT = require("../../Utils/JWT");
 
 const ServiceController = require("../../Controller/Service");

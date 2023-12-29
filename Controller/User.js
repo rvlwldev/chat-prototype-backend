@@ -64,6 +64,13 @@ const UserController = {
 					service: SERVICE,
 					id: { in: userIdArray },
 				},
+				select: {
+					serviceId: true,
+					id: true,
+					name: true,
+					role: true,
+					profileUserImageUrl: true,
+				},
 			})
 			.finally(() => prisma.$disconnect());
 	},

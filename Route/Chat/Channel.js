@@ -1,17 +1,14 @@
-const express = require("express");
-const ROUTER = express.Router();
-
+const ROUTER = require("express").Router();
 const JWT = require("../../Utils/JWT");
-
-const { HttpStatusCode } = require("axios");
 
 const ChannelController = require("../../Controller/Channel");
 const UserController = require("../../Controller/User");
 
 const ChannelException = require("../../Exception/Chat/ChannelException");
-const UserExceptions = require("../../Exception/User/UserException");
 
-// TODO : 모든경로에서 :channelId 모두 파라미터로 집어넣기, 객체조회말고....
+const WS = require("../../Utils/WebSocket");
+const { HttpStatusCode } = require("axios");
+
 ROUTER.post("/", JWT.verify, async (req, res) => {
 	try {
 		const { name, type } = req.body;
@@ -30,9 +27,11 @@ ROUTER.post("/", JWT.verify, async (req, res) => {
 ROUTER.post("/:channelId/", JWT.verify, async (req, res) => {
 	try {
 		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		await ChannelController.saveUserChannel(req.SERVICE, CHANNEL, req.USER);
+		await ChannelController.saveUserChannel(req.SERVICE, req.USER, CHANNEL);
 
 		res.status(HttpStatusCode.Ok).json(CHANNEL);
+
+		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.CHANNEL_CREATE, MESSAGE);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -50,9 +49,11 @@ ROUTER.post("/:channelId/users", JWT.verify, async (req, res) => {
 		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
 		const USERS = await UserController.getUsers(req.body.users);
 
-		await ChannelController.saveUserChannels(req.SERVICE, CHANNEL, USERS);
+		await ChannelController.saveUserChannels(req.SERVICE, USERS, CHANNEL);
 
 		res.status(HttpStatusCode.Created).json(USERS);
+
+		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.USER_IN, USERS);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -104,6 +105,26 @@ ROUTER.patch("/:channelId/", JWT.verify, async (req, res) => {
 		);
 
 		res.status(HttpStatusCode.Accepted).json(UPDATED_CHANNEL);
+
+		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.CHANNEL_UPDATE, MESSAGE);
+	} catch (err) {
+		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
+		else {
+			res.status(HttpStatusCode.InternalServerError).json(err);
+			console.log(err);
+		}
+	}
+});
+
+// TODO : 메세지 읽음 처리
+ROUTER.patch("/:channelId/read", JWT.verify, async (req, res) => {
+	try {
+		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
+		await ChannelController.updateUserChannel(req.SERVICE, CHANNEL, { readAt: new Date() });
+
+		res.status(HttpStatusCode.NoContent).end();
+
+		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.MESSAGE_READ, MESSAGE);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -119,7 +140,10 @@ ROUTER.patch("/:channelId/", JWT.verify, async (req, res) => {
 ROUTER.delete("/:channelId/", JWT.verify, async (req, res) => {
 	try {
 		await ChannelController.deleteChannel(req.SERVICE, req.USER, req.params.channelId);
+
 		res.status(HttpStatusCode.NoContent).end();
+
+		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.CHANNEL_DELETE, MESSAGE);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
