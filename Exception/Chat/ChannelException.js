@@ -1,3 +1,4 @@
+const Exception = require("../Exception");
 const { HttpStatusCode } = require("axios");
 
 const MESSAGES = {
@@ -8,35 +9,27 @@ const MESSAGES = {
 };
 
 const ChannelException = {
-	NotFound: class extends Error {
+	NotFound: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.NotFound;
-			this.message = message || MESSAGES.NOT_FOUND;
+			super(message || MESSAGES.NOT_FOUND, HttpStatusCode.NotFound);
 		}
 	},
 
-	Duplicated: class extends Error {
+	Duplicated: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.Conflict;
-			this.message = message || MESSAGES.DUPLICATED_ID;
+			super(message || MESSAGES.DUPLICATED_ID, HttpStatusCode.Conflict);
 		}
 	},
 
-	NotAllowed: class extends Error {
+	NotAllowed: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.Forbidden;
-			this.message = message || MESSAGES.NOT_ALLOWED;
+			super(message || MESSAGES.NOT_ALLOWED, HttpStatusCode.Forbidden);
 		}
 	},
 
-	NameRequired: class extends Error {
+	NameRequired: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.BadRequest;
-			this.message = message || MESSAGES.PUBLIC_CHANNEL_NAME_REQUIRE;
+			super(message || MESSAGES.PUBLIC_CHANNEL_NAME_REQUIRE, HttpStatusCode.BadRequest);
 		}
 	},
 };

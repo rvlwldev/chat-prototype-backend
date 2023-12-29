@@ -1,3 +1,4 @@
+const Exception = require("../Exception");
 const { HttpStatusCode } = require("axios");
 
 const MESSAGES = {
@@ -9,43 +10,33 @@ const MESSAGES = {
 };
 
 const MessageException = {
-	NotFound: class extends Error {
+	NotFound: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.NotFound;
-			this.message = message || MESSAGES.NOT_FOUND;
+			super(message || MESSAGES.NOT_FOUND, HttpStatusCode.NotFound);
 		}
 	},
 
-	NotAllowed: class extends Error {
+	NotAllowed: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.Forbidden;
-			this.message = message || MESSAGES.NOT_ALLOWED;
+			super(message || MESSAGES.NOT_ALLOWED, HttpStatusCode.Forbidden);
 		}
 	},
 
-	ChannelAccessDenied: class extends Error {
+	ChannelAccessDenied: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.Forbidden;
-			this.message = message || MESSAGES.NOT_CHANNEL_USER;
+			super(message || MESSAGES.NOT_CHANNEL_USER, HttpStatusCode.Forbidden);
 		}
 	},
 
-	MissingRequiredValues: class extends Error {
+	MissingRequiredValues: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.BadRequest;
-			this.message = message || MESSAGES.INVALID_PARAMETERS;
+			super(message || MESSAGES.INVALID_PARAMETERS, HttpStatusCode.BadRequest);
 		}
 	},
 
-	DuplicatedRequest: class extends Error {
+	DuplicatedRequest: class extends Exception {
 		constructor(message) {
-			super();
-			this.httpStatusCode = HttpStatusCode.Conflict;
-			this.message = message || MESSAGES.DUPLICATED_REQUEST;
+			super(message || MESSAGES.DUPLICATED_REQUEST, HttpStatusCode.Conflict);
 		}
 	},
 };
