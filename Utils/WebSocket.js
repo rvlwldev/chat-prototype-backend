@@ -1,82 +1,56 @@
 const WebSocket = require("ws");
-
-class ClientConnection {
-	ID;
-
-	channelIdSet = new Set();
-
-	/** @type WebSocket.Server */ WS;
-
-	constructor(serviceId, userId, ws) {
-		this.ID = `${serviceId}-${userId}`;
-		this.WS = ws;
-	}
-
-	addChannelId = (channelId) => this.channelIdSet.add(channelId);
-
-	deleteChannelId = (channelId) => this.channelIdSet.delete(channelId);
-}
+const JWT = require("jsonwebtoken");
 
 /** @type Map<String, ClientConnection> */
-const connectionMap = new Map();
+const socketMap = new Map();
 
-function openSocketWithServer(server) {
-	const wss = new WebSocket.Server({ server });
+class ClientConnection {
+	/** @type WebSocket.Server */ WebSocket;
 
-	const getParams = (url) => {
-		const params = new URLSearchParams(url.split("?")[1]);
-		return {
-			serviceId: params.get("serviceId"),
-			userId: params.get("userId"),
-		};
-	};
+	constructor(WebSocket, serviceId, userId) {
+		this.WebSocket = WebSocket;
+		this.serviceId = serviceId;
+		this.userId = userId;
 
-	wss.on("connection", (ws, req) => {
-		const { serviceId, userId } = getParams(req.url);
-		ws.onclose = () => removeClient(serviceId, userId);
+		this.channelSet = new Set();
+	}
 
-		// TODO: validation
-		if (!validateConnection(serviceId, userId)) {
-			// TODO : 실패 메세지 보내기
-			ws.terminate();
-			return;
+	subscribeChannel = (channelId) => this.channelSet.add(channelId);
+	unsubscribeChannel = (channelId) => this.channelSet.delete(channelId);
+}
+
+const verifyConnectRequest = (websocket, request) => {
+	const TOKEN = request.headers.authorization;
+	const KEY = process.env.JWT_KEY;
+
+	JWT.verify(TOKEN, KEY, (error, payload) => {
+		if (error) {
+			websocket.send(JSON.stringify({ error: error }));
+			websocket.terminate();
+			return null;
 		}
 
-		// 클라이언트 에러
-		ws.onerror = (error) => console.error(`클라이언트 에러: ${error.message}`);
-
-		// 임시 테스트용
-		ws.onmessage = (payload) => {
-			payload = JSON.parse(payload.data);
-
-			if (payload.event == "message") {
-				const channelId = payload.data.channel.id;
-				const message = payload.data.message;
-
-				WS.publish(channelId, payload.event, message);
-			}
+		return {
+			serviceId: payload.service.id,
+			userId: payload.user.id,
 		};
-
-		const connection = new ClientConnection(serviceId, userId, ws);
-		connectionMap.set(`${serviceId}-${userId}`, connection);
 	});
-}
+};
 
-function validateConnection(serviceId, userId) {
-	return true;
-}
+// TODO : 클라이언트 메세지 처리 ( message-typing 이벤트 )
+const onMessageReceive = (data) => {
+	const payload = JSON.parse(data);
+	console.log(payload);
+};
 
-function removeClient(serviceId, userId) {
-	const ID = `${serviceId}-${userId}`;
-	if (!connectionMap.has(ID)) return;
+const onPublish = (filter = () => false, eventName, payload) =>
+	Array.from(socketMap.values())
+		.filter(filter)
+		.map(async (websocket) => asyncSend(websocket, eventName, payload));
 
-	connectionMap.get(ID).WS.terminate();
-	connectionMap.delete(ID);
-}
-
-async function sendMessage(ws, eventName, message) {
-	return new Promise((resolve, reject) => {
-		ws.send(
+const asyncSend = (websocket, eventName, message) =>
+	new Promise((resolve, reject) =>
+		websocket.send(
 			JSON.stringify({
 				event: eventName,
 				result: message,
@@ -85,28 +59,74 @@ async function sendMessage(ws, eventName, message) {
 				if (error) reject(error);
 				else resolve();
 			}
-		);
-	});
-}
+		)
+	);
 
 const WS = {
-	subscribe: (serviceId, userId, channelId) => {
-		const connection = connectionMap.get(`${serviceId}-${userId}`);
+	openSocketWithServer: (server) => {
+		new WebSocket.Server({ server }).on("connection", (websocket, request) => {
+			const { serviceId, userId } = verifyConnectRequest(websocket, request);
 
-		// TODO : 클라이언트가 없으면 예외처리
-		if (!connection) return;
+			if (serviceId && userId) {
+				const key = `${serviceId}-${userId}`;
+				const connection = new ClientConnection(websocket, serviceId, userId);
+				socketMap.set(key, connection);
 
-		connection.addChannelId(channelId);
+				websocket.onclose = () => {
+					websocket.terminate();
+					socketMap.delete(key);
+				};
+
+				websocket.onmessage = onMessageReceive;
+			}
+		});
 	},
 
-	publish: async (channelId, eventName, message) => {
-		for (const connection of connectionMap.values()) {
-			if (connection.channelIdSet.has(channelId))
-				sendMessage(connection.WS, eventName, message).catch((err) => {
-					console.log("publish Error");
-				});
-		}
+	event: {
+		CHANNEL_CREATE: "channel-add",
+		CHANNEL_UPDATE: "channel-change",
+		CHANNEL_DELETE: "channel-remove",
+
+		USER_IN: "user-join",
+		USER_OUT: "user-leave",
+		USER_UPDATE: "user-change",
+
+		MESSAGE_SEND: "message-receive",
+		MESSAGE_READ: "message-read",
+		MESSAGE_TYPING: "message-typing",
+		MESSAGE_UPDATE: "message-change",
+		MESSAGE_DELETE: "message-remove",
 	},
+
+	subscribeChannel: (serviceId, userId, channelId) => {
+		let client = socketMap.get(`${serviceId}-${userId}`);
+
+		if (client instanceof ClientConnection) client.subscribeChannel(channelId);
+	},
+
+	subscribeChannelArray: (serviceId, userId, channelIdArray) => {
+		let client = socketMap.get(`${serviceId}-${userId}`);
+
+		if (client instanceof ClientConnection)
+			channelIdArray.forEach((channelId) => client.subscribeChannel(channelId));
+	},
+
+	publishToService: async (serviceId, eventName, message) =>
+		onPublish((conn) => conn.serviceId == serviceId, eventName, message),
+
+	publishToChannel: async (serviceId, channelId, eventName, message) =>
+		onPublish(
+			(conn) => conn.serviceId == serviceId && conn.channelSet.has(channelId),
+			eventName,
+			message
+		),
+
+	publishToUser: async (serviceId, userId, eventName, message) =>
+		onPublish(
+			(conn) => conn.serviceId == serviceId && conn.userId == userId,
+			eventName,
+			message
+		),
 };
 
-module.exports = { openSocketWithServer, WS };
+module.exports = WS;
