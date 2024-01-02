@@ -1,6 +1,7 @@
 const ROUTER = require("express").Router();
 
 const ServiceController = require("../../Controller/Service");
+const ChannelController = require("../../Controller/Channel");
 const UserController = require("../../Controller/User");
 
 const { HttpStatusCode } = require("axios");
@@ -11,7 +12,10 @@ ROUTER.post("/register", async (req, res) => {
 		const { serviceId, id, password, name, role } = req.body;
 
 		const SERVICE = await ServiceController.getServiceById(serviceId);
-		const USER = await UserController.createUser(serviceId, id, password, name, role);
+		const USER = await UserController.createUser(SERVICE, id, password, name, role);
+
+		const PUBLIC_CHANNELS = await ChannelController.getChannelsByTypeCode(req.SERVICE, 50);
+		await ChannelController.saveUserChannelsWithChannels(SERVICE, USER, PUBLIC_CHANNELS);
 
 		res.status(HttpStatusCode.Created).json({ service: SERVICE, user: USER });
 	} catch (err) {
