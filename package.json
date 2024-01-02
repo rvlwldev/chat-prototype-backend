@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "node Server.js"
+    "start": "nodemon Server.js"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
@@ -24,6 +24,7 @@
     "ws": "^8.15.1"
   },
   "devDependencies": {
+    "nodemon": "^3.0.2",
     "prisma": "^5.7.0"
   }
 }
