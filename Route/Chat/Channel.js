@@ -1,18 +1,23 @@
 const ROUTER = require("express").Router();
 const JWT = require("../../Utils/JWT");
 
-const ChannelController = require("../../Controller/Channel");
 const UserController = require("../../Controller/User");
-
-const ChannelException = require("../../Exception/Chat/ChannelException");
+const ChannelController = require("../../Controller/Channel");
 
 const WS = require("../../Utils/WebSocket");
 const { HttpStatusCode } = require("axios");
+const Exception = require("../../Exception/Exception");
 
+// TODO : 채널 접속자만 채널에 대한 요청 처리 가능하게
+// TODO : :channelId URL에 채널ID 요청 validator 로 빼기
+// TODO : 높은 권한은 모두 요청 가능하게?
 ROUTER.post("/", JWT.verify, async (req, res) => {
 	try {
-		const { name, type } = req.body;
-		const CHANNEL = await ChannelController.saveChannel(req.SERVICE, req.USER, type, name);
+		const { serviceId, userId } = req;
+		const { typeCode, name } = req.body;
+
+		const CHANNEL = await ChannelController.saveChannel(serviceId, userId, typeCode, name);
+		await ChannelController.saveUserChannel(serviceId, userId, CHANNEL.id);
 
 		res.status(HttpStatusCode.Created).json({ channel: CHANNEL });
 	} catch (err) {
@@ -24,14 +29,15 @@ ROUTER.post("/", JWT.verify, async (req, res) => {
 	}
 });
 
+// 채널 접속
 ROUTER.post("/:channelId/", JWT.verify, async (req, res) => {
 	try {
-		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		await ChannelController.saveUserChannel(req.SERVICE, req.USER, CHANNEL);
+		const CHANNEL = await ChannelController.getChannelById(req.serviceId, req.params.channelId);
+		await ChannelController.saveUserChannel(req.serviceId, req.userId, CHANNEL.id);
 
-		res.status(HttpStatusCode.Ok).json(CHANNEL);
+		res.status(HttpStatusCode.Ok).json({ channel: CHANNEL });
 
-		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.CHANNEL_CREATE, MESSAGE);
+		WS.publishToChannel(req.serviceId, CHANNEL.id, WS.event.USER_IN, req.userId);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -41,19 +47,23 @@ ROUTER.post("/:channelId/", JWT.verify, async (req, res) => {
 	}
 });
 
+// 채널에 유저 초대
 ROUTER.post("/:channelId/users", JWT.verify, async (req, res) => {
 	try {
+		let channelId = req.params.channelId;
 		let users = req.body.users;
-		users = !users instanceof Array ?? [users];
+		users = typeof users == "string" ? [users] : users;
+		users = Array.from(new Set(users));
 
-		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		const USERS = await UserController.getUsers(req.body.users);
+		const CHANNEL = await ChannelController.getChannelById(req.serviceId, channelId);
+		await ChannelController.getUserChannel(req.serviceId, req.userId, CHANNEL.id);
 
-		await ChannelController.saveUserChannels(req.SERVICE, USERS, CHANNEL);
+		const USERS = await UserController.getUsers(req.serviceId, users);
+		await ChannelController.saveUserChannelsWithUsers(req.serviceId, channelId, USERS);
 
-		res.status(HttpStatusCode.Created).json(USERS);
+		res.status(HttpStatusCode.Created).json({ channel: CHANNEL, users: USERS });
 
-		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.USER_IN, USERS);
+		WS.publishToChannel(req.serviceId.id, CHANNEL.id, WS.event.USER_IN, USERS);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -63,10 +73,11 @@ ROUTER.post("/:channelId/users", JWT.verify, async (req, res) => {
 	}
 });
 
+// 채널 조회
 ROUTER.get("/:channelId", JWT.verify, async (req, res) => {
 	try {
-		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		res.status(HttpStatusCode.Ok).json(CHANNEL);
+		const CHANNEL = await ChannelController.getChannelById(req.serviceId, req.params.channelId);
+		res.status(HttpStatusCode.Ok).json({ channel: CHANNEL });
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -76,12 +87,12 @@ ROUTER.get("/:channelId", JWT.verify, async (req, res) => {
 	}
 });
 
+// 채널 유저 목록 조회
 ROUTER.get("/:channelId/users", JWT.verify, async (req, res) => {
 	try {
-		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		const USERS = await UserController.getUsersByChannel(req.SERVICE, CHANNEL);
+		const USERS = await UserController.getUsersByChannelId(req.serviceId, req.params.channelId);
 
-		res.status(HttpStatusCode.Ok).json(USERS);
+		res.status(HttpStatusCode.Ok).json({ users: USERS });
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -91,22 +102,21 @@ ROUTER.get("/:channelId/users", JWT.verify, async (req, res) => {
 	}
 });
 
-// TODO : 채널명 수정 (전체 공개 채널만? 개인 채널도? 그럼 UserChannels에서 name 필드 관리?)
-ROUTER.patch("/:channelId/", JWT.verify, async (req, res) => {
+// 채널명 수정
+ROUTER.put("/:channelId/", JWT.verify, async (req, res) => {
 	try {
-		if (req.USER.role.id < 9) throw new ChannelException.NotAllowed();
-		if (!req.body.name) throw new ChannelException.NameRequired();
+		let { serviceId, userId } = req;
+		let channelId = req.params.channelId;
 
-		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		const UPDATED_CHANNEL = await ChannelController.updateChannelName(
-			req.SERVICE,
-			CHANNEL,
+		const USER_CHANNEL = await ChannelController.getUserChannel(serviceId, userId, channelId);
+		const UPDATED_CHANNEL = await ChannelController.updateUserChannelName(
+			serviceId,
+			userId,
+			channelId,
 			req.body.name
 		);
 
-		res.status(HttpStatusCode.Accepted).json(UPDATED_CHANNEL);
-
-		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.CHANNEL_UPDATE, MESSAGE);
+		res.status(HttpStatusCode.Accepted).json({ channel: UPDATED_CHANNEL });
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -116,15 +126,21 @@ ROUTER.patch("/:channelId/", JWT.verify, async (req, res) => {
 	}
 });
 
-// TODO : 메세지 읽음 처리
+// 메세지 읽음 처리
 ROUTER.patch("/:channelId/read", JWT.verify, async (req, res) => {
 	try {
-		const CHANNEL = await ChannelController.getChannelById(req.SERVICE, req.params.channelId);
-		await ChannelController.updateUserChannel(req.SERVICE, CHANNEL, { readAt: new Date() });
+		let { serviceId, userId } = req;
+		let channelId = req.params.channelId;
+
+		const CHANNEL = await ChannelController.getChannelById(serviceId, channelId);
+		await ChannelController.updateUserChannelReadAt(serviceId, userId, channelId);
 
 		res.status(HttpStatusCode.NoContent).end();
 
-		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.MESSAGE_READ, MESSAGE);
+		WS.publishToChannel(serviceId, channelId, WS.event.MESSAGE_READ, {
+			channelId: channelId,
+			userId: userId,
+		});
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
@@ -134,16 +150,23 @@ ROUTER.patch("/:channelId/read", JWT.verify, async (req, res) => {
 	}
 });
 
-// TODO : 채널 삭제할때...
-// 개인채널 - 그냥 삭제하기?
-// 공개채널 - 삭제 여부만 변경?
+// 개인채널참가 - 삭제
+// 채널 - 삭제 여부 변경
 ROUTER.delete("/:channelId/", JWT.verify, async (req, res) => {
 	try {
-		await ChannelController.deleteChannel(req.SERVICE, req.USER, req.params.channelId);
+		let { serviceId, userId } = req;
+		let channelId = req.params.channelId;
+
+		const CHANNEL = await ChannelController.getChannelById(serviceId, channelId);
+
+		await ChannelController.deleteUserChannel(serviceId, userId, channelId);
 
 		res.status(HttpStatusCode.NoContent).end();
 
-		WS.publishToChannel(req.SERVICE.id, CHANNEL.id, WS.event.CHANNEL_DELETE, MESSAGE);
+		WS.publishToChannel(serviceId, channelId, WS.event.CHANNEL_DELETE, {
+			channelId: channelId,
+			userId: userId,
+		});
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {

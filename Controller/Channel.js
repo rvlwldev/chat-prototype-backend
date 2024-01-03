@@ -2,140 +2,233 @@ const ChannelException = require("../Exception/Chat/ChannelException");
 const prisma = require("../Utils/Prisma");
 
 const { v4: UUID4 } = require("uuid");
+const UserController = require("./User");
 
-// TODO : 모든경로에서 service, channelId 모두 파라미터로 받기, 메소드 재사용으로 코드 줄이기
+// TODO : 모든경로에서 serviceId, channelId 모두 파라미터로 받기, 메소드 재사용으로 코드 줄이기
 const ChannelController = {
-	getChannelById: async (SERVICE, channelId) =>
+	getChannelById: async (serviceId, channelId) =>
 		await prisma.channel
-			.findUnique({ where: { service: SERVICE, id: channelId } })
-			.catch((err) => {
-				if (err.code == "P2020") throw new ChannelException.NotFound();
+			.findUnique({
+				where: { ChannelPK: { serviceId: serviceId, id: channelId } },
+				select: { serviceId: true, id: true, typeCode: true },
+			})
+			.then((channel) => {
+				if (!channel) throw new ChannelException.NotFound();
+				return channel;
 			})
 			.finally(() => prisma.$disconnect()),
 
-	getChannelsByUser: async (SERVICE, USER) =>
+	getChannelsByUser: async (serviceId, userId) =>
 		await prisma.userChannel
 			.findMany({
-				where: { Service: SERVICE, user: USER },
-				select: { channel: true },
+				where: { serviceId: serviceId, userId: userId },
+				select: { channel: { select: { id: true, name: true, typeCode: true } } },
 			})
-			.catch((err) => {
-				if (err.code == "P2001") throw new ChannelException.NotFound();
+			.then((userChannels) => {
+				if (!userChannels) throw new ChannelException.NotFound();
+				return userChannels
+					.map((userChannel) => userChannel.channel)
+					.sort((a, b) => b.typeCode - a.typeCode);
 			})
 			.finally(() => prisma.$disconnect()),
 
-	saveChannel: async (SERVICE, USER, type, name) => {
-		if (type.includes("public")) {
-			if (USER.role.id < 9) throw new ChannelException.NotAllowed();
-			else if (!name) throw new ChannelException.NameRequired();
+	getChannelsByTypeCode: async (serviceId, typeCode) =>
+		await prisma.channel.findMany({ where: { serviceId: serviceId, typeCode: typeCode } }),
 
-			let where = { serviceId: USER.serviceId, type: type, name: name };
-			await prisma.channel.findFirst({ where: where }).then((channel) => {
-				if (channel) throw new ChannelException.Duplicated();
+	getUserChannel: async (serviceId, userId, channelId) =>
+		await prisma.userChannel
+			.findUnique({
+				where: {
+					UserChannelPK: {
+						serviceId: serviceId,
+						userId: userId,
+						channelId: channelId,
+					},
+				},
+			})
+			.then((userChannel) => {
+				if (!!!userChannel) throw new ChannelException.NotChannelUser();
+				return userChannel;
+			}),
+
+	saveChannel: async (serviceId, userId, typeCode, name) => {
+		if (!!!typeCode) throw new ChannelException.MissingRequiredValues();
+
+		if (typeCode >= 50) {
+			if (!name) throw new ChannelException.NameRequired();
+
+			await UserController.getUser(serviceId, userId).then((USER) => {
+				if (USER.roleCode < 9) throw new ChannelException.NotAllowed();
 			});
+
+			await prisma.channel
+				.findUnique({ where: { serviceId: serviceId, typeCode: typeCode, name: name } })
+				.then((channel) => {
+					if (channel) throw new ChannelException.Duplicated();
+				});
 		}
 
-		let channelId = UUID4().substring(0, 12);
-
-		const newChannel = await prisma.channel.create({
+		return await prisma.channel.create({
 			data: {
-				service: SERVICE,
-				id: channelId,
+				serviceId: serviceId,
+				id: UUID4().substring(0, 32),
 				name: name,
-				type: type,
+				typeCode: typeCode,
 			},
 			select: {
-				service: false,
+				serviceId: true,
 				id: true,
 				name: true,
-				type: true,
+				typeCode: true,
 			},
 		});
-
-		await prisma.userChannel.create({ data: { channel: newChannel, user: USER } });
-
-		return newChannel;
 	},
 
-	saveUserChannel: async (SERVICE, USER, CHANNEL) =>
-		await prisma.userChannel
-			.create({
-				data: { service: SERVICE, channel: CHANNEL, user: USER },
-				select: { channel: true, user: true },
+	saveUserChannel: async (serviceId, userId, channelId) => {
+		await ChannelController.getUserChannel(serviceId, userId, channelId)
+			.then((userChannel) => {
+				if (userChannel) throw new ChannelException.ExistChannelUser();
 			})
 			.catch((err) => {
-				console.log("saveUserChannel ERROR");
-				console.log(err);
-			})
-			.finally(() => prisma.$disconnect()),
+				if (err instanceof ChannelException.NotChannelUser) return;
+				else throw err;
+			});
 
-	saveUserChannels: async (SERVICE, USERS, CHANNEL) =>
+		return await prisma.userChannel.create({
+			data: {
+				serviceId: serviceId,
+				userId: userId,
+				channelId: channelId,
+			},
+			select: {
+				channel: true,
+				user: {
+					select: {
+						serviceId: true,
+						id: true,
+						name: true,
+						profileUserImageUrl: true,
+						roleCode: true,
+					},
+				},
+			},
+		});
+	},
+
+	saveUserChannelsWithUsers: async (serviceId, channelId, USERS) => {
+		let existUserIds = await prisma.userChannel.findMany({
+			where: {
+				serviceId: serviceId,
+				channelId: channelId,
+				userId: {
+					in: USERS.map((user) => user.id),
+				},
+			},
+			select: { userId: true },
+		});
+
+		if (existUserIds.length > 0) throw new ChannelException.ExistChannelUser();
+
+		return await prisma.userChannel
+			.createMany({
+				data: USERS.map((user) => {
+					return {
+						serviceId: serviceId,
+						channelId: channelId,
+						userId: user.id,
+					};
+				}),
+			})
+			.finally(() => prisma.$disconnect());
+	},
+
+	saveUserChannelsWithChannels: async (serviceId, userId, CHANNELS) =>
 		await prisma.userChannel
 			.createMany({
-				data: USERS.map((USER) => {
+				data: CHANNELS.map((channel) => {
 					return {
-						serviceId: SERVICE.id,
-						channelId: CHANNEL.id,
-						userId: USER.id,
+						serviceId: serviceId,
+						userId: userId,
+						channelId: channel.id,
 					};
 				}),
 			})
 			.finally(() => prisma.$disconnect()),
 
-	updateChannel: async (SERVICE, CHANNEL, data) =>
-		await prisma.channel.update({
-			where: { service: SERVICE, id: CHANNEL.id },
-			data: data,
-			select: {
-				service: false,
-				id: true,
-				name: true,
-				type: true,
-			},
-		}),
-
-	updateChannelName: async (SERVICE, CHANNEL, name) =>
-		await prisma.channel.update({
-			where: { service: SERVICE, id: CHANNEL.id },
-			data: { name: name },
-			select: {
-				service: false,
-				id: true,
-				name: true,
-				type: true,
-			},
-		}),
-
-	updateUserChannel: async (SERVICE, CHANNEL, data) =>
-		await prisma.userChannel.update({
-			where: { service: SERVICE, id: CHANNEL.id },
-			data: data,
-			select: {
-				service: false,
-				channel: true,
-				user: true,
-				readAt: true,
-			},
-		}),
-
-	deleteChannel: async (SERVICE, USER, channelId) => {
-		const CHANNEL = await prisma.channel
-			.findUnique({
-				where: { service: SERVICE, id: channelId },
+	updateUserChannelName: async (serviceId, userId, channelId, name) =>
+		await prisma.userChannel
+			.update({
+				where: {
+					UserChannelPK: {
+						serviceId: serviceId,
+						userId: userId,
+						channelId: channelId,
+					},
+				},
+				data: { name: name ?? null },
+				select: { name: true, channel: { select: { id: true, typeCode: true } } },
 			})
-			.catch(async (err) => {
-				await prisma.$disconnect();
-				if (err.code == "P2020") throw new ChannelException.NotFound();
-				throw err;
-			});
+			.then((userChannel) => {
+				userChannel.channel.name = userChannel.name;
+				return userChannel.channel;
+			}),
 
-		if (CHANNEL.type.includes("public") && USER.role.id < 9)
-			throw new ChannelException.NotAllowed();
+	updateUserChannelReadAt: async (serviceId, userId, channelId) =>
+		await prisma.userChannel
+			.update({
+				where: {
+					UserChannelPK: {
+						serviceId: serviceId,
+						userId: userId,
+						channelId: channelId,
+					},
+				},
+				data: { readAt: new Date() },
+				select: {
+					channel: {
+						select: {
+							id: true,
+						},
+					},
+					userId: true,
+					name: true,
+					readAt: true,
+				},
+			})
+			.then((userChannel) => {
+				return {
+					...userChannel.channel,
+					userId: userChannel.userId,
+					name: userChannel.name,
+					readAt: userChannel.readAt,
+				};
+			}),
 
-		await prisma.channel.delete({ where: { service: SERVICE, id: channelId } });
+	deleteChannel: async (serviceId, channelId) =>
+		await prisma.channel.update({
+			where: { ChannelPK: { serviceId: serviceId, id: channelId } },
+			data: { deleteYn: true },
+		}),
 
-		return await prisma.channel.delete({ where: { service: SERVICE, id: CHANNEL } });
-	},
+	deleteUserChannel: async (serviceId, userId, channelId) =>
+		await prisma.userChannel
+			.delete({
+				where: {
+					UserChannelPK: {
+						serviceId: serviceId,
+						userId: userId,
+						channelId: channelId,
+					},
+				},
+			})
+			.then(() =>
+				prisma.userChannel
+					.findMany({ where: { serviceId: serviceId, channelId: channelId } })
+					.then((userChannels) => {
+						if (userChannels.length < 1)
+							ChannelController.deleteChannel(serviceId, channelId);
+					})
+			),
 };
 
 module.exports = ChannelController;
