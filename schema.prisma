@@ -51,7 +51,7 @@ model MessageType {
 }
 
 model User {
-    serviceId           String
+    serviceId           String?
     id                  String    @id
     password            String
     name                String
@@ -74,6 +74,7 @@ model Channel {
     id        String
     name      String?
     typeCode  Int
+    deleteYn  Boolean @default(false)
 
     service Service     @relation(fields: [serviceId], references: [id])
     type    ChannelType @relation(fields: [typeCode], references: [code])
@@ -88,13 +89,15 @@ model UserChannel {
     serviceId String
     userId    String
     channelId String
+    name      String?
+    joinAt    DateTime  @default(now())
     readAt    DateTime?
 
     service Service @relation(fields: [serviceId], references: [id])
     user    User    @relation(fields: [serviceId, userId], references: [serviceId, id])
     channel Channel @relation(fields: [serviceId, channelId], references: [serviceId, id])
 
-    @@id([serviceId, userId, channelId])
+    @@id([serviceId, userId, channelId], name: "UserChannelPK")
 }
 
 model Message {
