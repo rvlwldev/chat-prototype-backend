@@ -28,15 +28,10 @@ const ServiceController = {
 	},
 
 	getServiceById: async (serviceId) =>
-		await prisma.service
-			.findUnique({
-				where: { id: serviceId },
-				select: { channels: true },
-			})
-			.catch((err) => {
-				// TODO : Prisma 에러 상수화
-				if (err.code == "P2001") throw new ServiceException.NotFound();
-			}),
+		await prisma.service.findUnique({ where: { id: serviceId } }).then((service) => {
+			if (!service) throw new ServiceException.NotFound();
+			return service;
+		}),
 
 	getAllService: async () => await prisma.service.findMany({ select: { id: true, name: true } }),
 };

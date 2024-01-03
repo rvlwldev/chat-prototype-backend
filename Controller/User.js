@@ -6,20 +6,14 @@ const SALT_ROUND = 10;
 
 const UserExceptions = require("../Exception/User/UserException");
 
-const Exception = require("../Exception/Exception");
-
+// TODO : 모든경로에서 serviceId로 파라미터로 받기
 const UserController = {
-	createUser: async (serviceId, id, password, name, role) => {
-		if (role >= 9) throw new UserExceptions.InvalidRole();
+	createUser: async (serviceId, id, password, name, roleCode) => {
+		if (roleCode >= 9) throw new UserExceptions.InvalidRole();
 
-		const USER = await UserController.getUser(serviceId, id)
-			.then((user) => !!user)
-			.catch((err) => {
-				if (err instanceof UserExceptions.NotFound) return null;
-				else throw new Exception(err.message);
-			});
-
-		if (USER) throw new UserExceptions.Duplicated();
+		await prisma.user.findUnique({ where: { serviceId: serviceId, id: id } }).then((user) => {
+			if (user) throw new UserExceptions.Duplicated();
+		});
 
 		return await prisma.user
 			.create({
@@ -28,80 +22,96 @@ const UserController = {
 					id: id,
 					password: bcrypt.hashSync(password, SALT_ROUND),
 					name: name,
-					role: role,
+					roleCode: roleCode,
 				},
 				select: {
 					id: true,
 					name: true,
-					role: true,
-					password: false,
+					roleCode: true,
+					createdAt: true,
 				},
 			})
 			.finally(() => prisma.$disconnect());
 	},
 
-	getUser: async (SERVICE, userId) =>
+	getUser: async (serviceId, userId) =>
 		await prisma.user
-			.findUniqueOrThrow({
-				where: { service: SERVICE, id: userId },
+			.findFirst({
+				where: { serviceId: serviceId, id: userId },
 				select: {
 					serviceId: true,
 					id: true,
 					name: true,
-					role: true,
+					roleCode: true,
 					profileUserImageUrl: true,
 				},
 			})
-			.catch((err) => {
-				throw new UserExceptions.NotFound();
+			.then((user) => {
+				if (!user) throw new UserExceptions.NotFound();
+				else return user;
 			})
 			.finally(() => prisma.$disconnect()),
 
-	getUsers: async (SERVICE, userIdArray) => {
+	getUsers: async (serviceId, userIdArray) =>
 		await prisma.user
 			.findMany({
 				where: {
-					service: SERVICE,
+					serviceId: serviceId,
 					id: { in: userIdArray },
 				},
 				select: {
 					serviceId: true,
 					id: true,
 					name: true,
-					role: true,
+					roleCode: true,
 					profileUserImageUrl: true,
 				},
 			})
-			.finally(() => prisma.$disconnect());
-	},
+			.finally(() => prisma.$disconnect()),
 
-	getUsersByService: async (SERVICE) =>
-		await prisma.user.findMany({ where: { service: SERVICE } }),
+	getUsersByServiceId: async (serviceId) =>
+		await prisma.user.findMany({
+			where: { serviceId: serviceId },
+			select: {
+				id: true,
+				name: true,
+				profileUserImageUrl: true,
+				roleCode: true,
+			},
+		}),
 
-	getUsersByChannel: async (SERVICE, CHANNEL) =>
+	getUsersByChannelId: async (serviceId, channelId) =>
 		await prisma.userChannel
 			.findMany({
 				where: {
-					service: SERVICE,
-					channel: CHANNEL,
+					serviceId: serviceId,
+					channelId: channelId,
 				},
-				select: { user: true },
+				select: {
+					user: {
+						select: {
+							id: true,
+							name: true,
+							profileUserImageUrl: true,
+							roleCode: true,
+						},
+					},
+				},
 			})
+			.then((res) => res.map((users) => users.user))
 			.finally(() => prisma.$disconnect()),
 
-	getToken: async (SERVICE, USER, inputPW) => {
+	getToken: async (serviceId, userId, inputPW) => {
 		const PASSWORD = await prisma.user
-			.findUnique({ where: { service: SERVICE, id: USER.id } })
-			.then((user) => user.password)
-			.catch((err) => {
-				if (err.code == "P2001") throw new UserExceptions.NotFound();
-				else throw new Exception(err.message, err.code);
-			})
-			.finally(() => prisma.$disconnect());
+			.findUnique({ where: { serviceId: serviceId, id: userId } })
+			.then((user) => {
+				if (!user) throw new UserExceptions.NotFound();
+				return user.password;
+			});
 
 		if (!bcrypt.compareSync(inputPW, PASSWORD)) throw new UserExceptions.InvalidPassword();
 
-		return JWT.generate(SERVICE, USER);
+		return JWT.generate(serviceId, userId);
 	},
 };
 
