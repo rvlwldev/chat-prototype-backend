@@ -9,11 +9,13 @@ const Exception = require("../../Exception/Exception");
 
 ROUTER.get("/:userId/channels", JWT.verify, async (req, res) => {
 	try {
-		const CHANNELS = await ChannelController.getChannelsByUser(req.SERVICE, req.USER);
-		let idArray = CHANNELS.map((CHANNEL) => CHANNEL.id);
+		let { serviceId, userId } = req;
+		const CHANNELS = await ChannelController.getChannelsByUser(serviceId, userId);
 
-		WS.subscribeChannelArray(req.SERVICE.id, req.USER.id, idArray);
 		res.status(HttpStatusCode.Ok).json({ channels: CHANNELS });
+
+		let channelIdArray = CHANNELS.map((channel) => channel.id);
+		WS.subscribeChannelArray(serviceId, userId, channelIdArray);
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
