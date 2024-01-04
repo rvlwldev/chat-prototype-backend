@@ -8,13 +8,13 @@ const { HttpStatusCode } = require("axios");
 
 ROUTER.get("/channels", JWT.verify, async (req, res, next) => {
 	try {
-		let { serviceId, userId } = req;
-		const CHANNELS = await ChannelController.getChannelsByUser(serviceId, userId);
+		const { serviceId, userId } = req;
+		const channels = await ChannelController.getChannelsByUser(serviceId, userId);
 
-		res.status(HttpStatusCode.Ok).json({ channels: CHANNELS });
-
-		let channelIdArray = CHANNELS.map((channel) => channel.id);
+		const channelIdArray = channels.map((channel) => channel.id);
 		WS.subscribeChannelArray(serviceId, userId, channelIdArray);
+
+		res.status(HttpStatusCode.Ok).json({ channels: channels });
 	} catch (err) {
 		next(err);
 	}

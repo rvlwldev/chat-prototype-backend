@@ -4,13 +4,13 @@ const prisma = require("../Utils/Prisma");
 const { v4: UUID4 } = require("uuid");
 const UserController = require("./User");
 
-// TODO : 모든경로에서 serviceId, channelId 모두 파라미터로 받기, 메소드 재사용으로 코드 줄이기
+// TODO : 모든경로에서 serviceId, channelId 모두 파라미터로 받기, 메소드 재사용/상수화 -> 코드 줄이기
 const ChannelController = {
 	getChannelById: async (serviceId, channelId) =>
 		await prisma.channel
 			.findUnique({
 				where: { ChannelPK: { serviceId: serviceId, id: channelId } },
-				select: { serviceId: true, id: true, typeCode: true },
+				select: { serviceId: true, id: true, name: true, typeCode: true },
 			})
 			.then((channel) => {
 				if (!channel) throw new ChannelException.NotFound();
@@ -25,7 +25,6 @@ const ChannelController = {
 				select: { channel: { select: { id: true, name: true, typeCode: true } } },
 			})
 			.then((userChannels) => {
-				if (!userChannels) throw new ChannelException.NotFound();
 				return userChannels
 					.map((userChannel) => userChannel.channel)
 					.sort((a, b) => b.typeCode - a.typeCode);
@@ -45,13 +44,46 @@ const ChannelController = {
 						channelId: channelId,
 					},
 				},
+				select: {
+					user: { select: { serviceId: true, id: true, name: true, role: true } },
+					channel: {
+						select: {
+							id: true,
+							name: true,
+							type: true,
+						},
+					},
+				},
 			})
 			.then((userChannel) => {
 				if (!!!userChannel) throw new ChannelException.NotChannelUser();
 				return userChannel;
 			}),
 
-	saveChannel: async (serviceId, userId, typeCode, name) => {
+	getUsersByChannelId: async (serviceId, channelId) =>
+		await prisma.userChannel
+			.findMany({
+				where: { serviceId: serviceId, channelId: channelId },
+				select: {
+					channel: true,
+					user: {
+						select: {
+							serviceId: true,
+							id: true,
+							name: true,
+							role: true,
+						},
+					},
+				},
+			})
+			.then((userChannels) => {
+				return {
+					channel: userChannels[0]?.channel,
+					users: userChannels.map((userChannel) => userChannel.user),
+				};
+			}),
+
+	saveChannel: async (serviceId, userId, name = null, typeCode = 10) => {
 		if (!!!typeCode) throw new ChannelException.MissingRequiredValues();
 
 		if (typeCode >= 50) {
@@ -101,7 +133,13 @@ const ChannelController = {
 				channelId: channelId,
 			},
 			select: {
-				channel: true,
+				channel: {
+					select: {
+						serviceId: true,
+						id: true,
+						typeCode: true,
+					},
+				},
 				user: {
 					select: {
 						serviceId: true,
@@ -142,8 +180,8 @@ const ChannelController = {
 			.finally(() => prisma.$disconnect());
 	},
 
-	saveUserChannelsWithChannels: async (serviceId, userId, CHANNELS) =>
-		await prisma.userChannel
+	saveUserChannelsWithChannels: async (serviceId, userId, CHANNELS) => {
+		return await prisma.userChannel
 			.createMany({
 				data: CHANNELS.map((channel) => {
 					return {
@@ -153,7 +191,8 @@ const ChannelController = {
 					};
 				}),
 			})
-			.finally(() => prisma.$disconnect()),
+			.finally(() => prisma.$disconnect());
+	},
 
 	updateUserChannelName: async (serviceId, userId, channelId, name) =>
 		await prisma.userChannel
@@ -204,10 +243,16 @@ const ChannelController = {
 				};
 			}),
 
-	deleteChannel: async (serviceId, channelId) =>
+	// 삭제여부만 변경
+	updateChannelDeleteYn: async (serviceId, channelId, deleteYn = true) =>
 		await prisma.channel.update({
 			where: { ChannelPK: { serviceId: serviceId, id: channelId } },
-			data: { deleteYn: true },
+			data: { deleteYn: deleteYn },
+		}),
+
+	deleteChannel: async (serviceId, channelId) =>
+		await prisma.channel.delete({
+			where: { ChannelPK: { serviceId: serviceId, id: channelId } },
 		}),
 
 	deleteUserChannel: async (serviceId, userId, channelId) =>
@@ -221,14 +266,7 @@ const ChannelController = {
 					},
 				},
 			})
-			.then(() =>
-				prisma.userChannel
-					.findMany({ where: { serviceId: serviceId, channelId: channelId } })
-					.then((userChannels) => {
-						if (userChannels.length < 1)
-							ChannelController.deleteChannel(serviceId, channelId);
-					})
-			),
+			.finally(() => prisma.$disconnect()),
 };
 
 module.exports = ChannelController;

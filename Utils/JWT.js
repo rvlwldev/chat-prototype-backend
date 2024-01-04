@@ -1,14 +1,14 @@
 const { HttpStatusCode } = require("axios");
 const JSON_WEB_TOKEN = require("jsonwebtoken");
-
-const ServiceController = require("../Controller/Service");
-const UserController = require("../Controller/User");
+const prisma = require("./Prisma");
+const ServiceException = require("../Exception/Service/ServiceException");
+const UserException = require("../Exception/User/UserException");
 
 const JWT = {
 	generate: (serviceId, userId) => {
 		const payload = { serviceId: serviceId, userId: userId };
 		const secretKey = process.env.JWT_KEY;
-		const options = { expiresIn: "1h" };
+		const options = { expiresIn: "100 days" };
 
 		return JSON_WEB_TOKEN.sign(payload, secretKey, options);
 	},
@@ -31,11 +31,29 @@ const JWT = {
 			let { serviceId, userId } = decoded;
 
 			try {
-				req.service = await ServiceController.getServiceById(serviceId);
-				req.user = await UserController.getUser(serviceId, userId);
+				req.service = await prisma.service
+					.findFirstOrThrow({
+						where: { id: serviceId },
+						select: { id: true, name: true },
+					})
+					.catch(() => {
+						throw new ServiceException.NotFound();
+					});
 
-				req.serviceId = serviceId;
-				req.userId = userId;
+				req.user = await prisma.user
+					.findUniqueOrThrow({
+						where: { id: userId },
+						select: {
+							id: true,
+							name: true,
+							roleCode: true,
+							profileUserImageUrl: true,
+						},
+					})
+					.catch(() => {
+						throw new UserException.NotFound();
+					});
+
 				next();
 			} catch (err) {
 				next(err);

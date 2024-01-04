@@ -29,7 +29,7 @@ const ServiceController = {
 
 	getServiceById: async (serviceId) =>
 		await prisma.service.findUnique({ where: { id: serviceId } }).then((service) => {
-			if (!service) throw new ServiceException.NotFound();
+			if (!!!service) throw new ServiceException.NotFound();
 			return service;
 		}),
 

@@ -1,4 +1,5 @@
 const ROUTER = require("express").Router();
+const Validator = require("../../Exception/Validator");
 
 const ServiceController = require("../../Controller/Service");
 const ChannelController = require("../../Controller/Channel");
@@ -7,40 +8,34 @@ const UserController = require("../../Controller/User");
 const { HttpStatusCode } = require("axios");
 const Exception = require("../../Exception/Exception");
 
-ROUTER.post("/register", async (req, res) => {
+ROUTER.post("/register", Validator.body.serviceId, async (req, res, next) => {
 	try {
-		const { serviceId, id, password, name, roleCode } = req.body;
+		const { serviceId, id: userId, password, name, roleCode } = req.body;
 
-		const SERVICE = await ServiceController.getServiceById(serviceId);
-		const USER = await UserController.createUser(serviceId, id, password, name, roleCode);
+		const USER = await UserController.createUser(serviceId, userId, password, name, roleCode);
+		const PUBLIC_CHANNELS = await ChannelController.getChannelsByTypeCode(serviceId, 50);
 
-		const PUBLIC_CHANNELS = await ChannelController.getChannelsByTypeCode(req.SERVICE, 50);
-		await ChannelController.saveUserChannelsWithChannels(serviceId, id, PUBLIC_CHANNELS);
+		await ChannelController.saveUserChannelsWithChannels(serviceId, userId, PUBLIC_CHANNELS);
 
 		res.status(HttpStatusCode.Created).json({
-			service: SERVICE,
+			service: await ServiceController.getServiceById(serviceId),
 			user: USER,
 			channels: PUBLIC_CHANNELS,
 		});
 	} catch (err) {
-		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
-		else {
-			res.status(HttpStatusCode.InternalServerError).json(err);
-			console.log(err);
-		}
+		next(err);
 	}
 });
 
-ROUTER.post("/login", async (req, res) => {
+ROUTER.post("/login", Validator.body.serviceId, Validator.body.userId, async (req, res) => {
 	try {
-		let { serviceId, user } = req.body;
-		let { id: userId, password } = user;
+		const { serviceId, userId, password } = req.body;
 
-		const SERVICE = await ServiceController.getServiceById(serviceId);
-		const USER = await UserController.getUser(serviceId, userId);
-		const TOKEN = await UserController.getToken(serviceId, userId, password);
-
-		res.status(HttpStatusCode.Ok).json({ service: SERVICE, user: USER, token: TOKEN });
+		res.status(HttpStatusCode.Ok).json({
+			service: await ServiceController.getServiceById(serviceId),
+			user: await UserController.getUser(serviceId, userId),
+			token: await UserController.getToken(serviceId, userId, password),
+		});
 	} catch (err) {
 		if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
 		else {
