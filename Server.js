@@ -34,6 +34,10 @@ const message = require("./Route/Chat/Message");
 APP.use("/channels", channel, message);
 APP.use("/channels", channel, message);
 
+// 전역 에러 핸들러
+const exceptionHandler = require("./Exception/ExceptionHandler");
+APP.use(exceptionHandler);
+
 const server = APP.listen(PORT, async () => {
 	const initializeData = require("./Configuration/Prisma/Seed");
 

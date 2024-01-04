@@ -1,9 +1,12 @@
 const { HttpStatusCode } = require("axios");
 const JSON_WEB_TOKEN = require("jsonwebtoken");
 
+const ServiceController = require("../Controller/Service");
+const UserController = require("../Controller/User");
+
 const JWT = {
-	generate: (SERVICE, USER) => {
-		const payload = { service: SERVICE, user: USER };
+	generate: (serviceId, userId) => {
+		const payload = { serviceId: serviceId, userId: userId };
 		const secretKey = process.env.JWT_KEY;
 		const options = { expiresIn: "1h" };
 
@@ -14,22 +17,29 @@ const JWT = {
 		const token = req.headers.authorization;
 		const secretKey = process.env.JWT_KEY;
 
-		JSON_WEB_TOKEN.verify(token, secretKey, (err, decoded) => {
+		JSON_WEB_TOKEN.verify(token, secretKey, async (err, decoded) => {
 			if (err) {
-				if (err.name === "TokenExpiredError")
-					return res
-						.status(HttpStatusCode.Unauthorized)
-						.json({ error: "토큰이 만료되었습니다." });
-				else
-					return res
-						.status(HttpStatusCode.Unauthorized)
-						.json({ error: "올바르지 않은 토큰입니다." });
+				if (err.name === "TokenExpiredError") {
+					err.message = "토큰이 만료되었습니다.";
+					return res.status(HttpStatusCode.Unauthorized).json(err);
+				}
+
+				err.message = "올바르지 않은 토큰입니다.";
+				return res.status(HttpStatusCode.Unauthorized).json(err);
 			}
 
-			req.USER = decoded.user;
-			req.SERVICE = decoded.service;
+			let { serviceId, userId } = decoded;
 
-			next();
+			try {
+				req.service = await ServiceController.getServiceById(serviceId);
+				req.user = await UserController.getUser(serviceId, userId);
+
+				req.serviceId = serviceId;
+				req.userId = userId;
+				next();
+			} catch (err) {
+				next(err);
+			}
 		});
 	},
 };
