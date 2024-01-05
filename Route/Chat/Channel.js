@@ -1,5 +1,6 @@
 const ROUTER = require("express").Router();
 const JWT = require("../../Utils/JWT");
+const Validator = require("../../Exception/Validator");
 
 const UserController = require("../../Controller/User");
 const ChannelController = require("../../Controller/Channel");
@@ -8,11 +9,8 @@ const WS = require("../../Utils/WebSocket");
 const { HttpStatusCode } = require("axios");
 const Exception = require("../../Exception/Exception");
 
-const Validator = require("../../Exception/Validator");
 const UserException = require("../../Exception/User/UserException");
 
-// TODO : 채널 접속자만 채널에 대한 요청 처리 가능하게
-// TODO : :channelId URL에 채널ID 요청 validator 로 빼기
 // TODO : 높은 권한은 모두 요청 가능하게?
 
 // 일반유저의 채널 생성 (무조껀 private 채널)
@@ -116,7 +114,7 @@ ROUTER.get(
 );
 
 // 채널명 수정
-ROUTER.put(
+ROUTER.patch(
 	"/:channelId/",
 	JWT.verify,
 	Validator.params.channelId,
