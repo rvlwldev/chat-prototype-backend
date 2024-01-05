@@ -74,7 +74,7 @@ model Channel {
     id        String
     name      String?
     typeCode  Int
-    deleteYn  Boolean @default(false)
+    deletedAt DateTime?
 
     service Service     @relation(fields: [serviceId], references: [id])
     type    ChannelType @relation(fields: [typeCode], references: [code])
@@ -101,20 +101,22 @@ model UserChannel {
 }
 
 model Message {
-    id        Int       @id @default(autoincrement())
+    id        String  @id
     serviceId String
     channelId String
     userId    String
-    parentId  Int?
-    text      String?
-    typeCode  Int
-    filePath  String?
-    fileName  String?
-    fileSize  Int?
+    parentId  String?
+
+    text     String?
+    typeCode Int
+
+    filePath String?
+    fileName String?
+    fileSize Int?
+
     createdAt DateTime  @default(now())
     updatedAt DateTime?
-    updatedYn Boolean   @default(false)
-    deletedYn Boolean   @default(false)
+    deletedAt DateTime?
 
     service  Service     @relation("UserService", fields: [serviceId], references: [id])
     channel  Channel     @relation("ChannelMessages", fields: [serviceId, channelId], references: [serviceId, id])
