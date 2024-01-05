@@ -7,7 +7,6 @@ const ChannelController = require("../../Controller/Channel");
 
 const WS = require("../../Utils/WebSocket");
 const { HttpStatusCode } = require("axios");
-const Exception = require("../../Exception/Exception");
 
 const UserException = require("../../Exception/User/UserException");
 
@@ -95,7 +94,7 @@ ROUTER.get(
 	JWT.verify,
 	Validator.params.channelId,
 	Validator.params.userChannelId,
-	async (req, res) => {
+	async (req, res, next) => {
 		try {
 			const USERS = await UserController.getUsersByChannelId(
 				req.service.id,
@@ -104,11 +103,7 @@ ROUTER.get(
 
 			res.status(HttpStatusCode.Ok).json({ users: USERS });
 		} catch (err) {
-			if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
-			else {
-				res.status(HttpStatusCode.InternalServerError).json(err);
-				console.log(err);
-			}
+			next();
 		}
 	}
 );
@@ -119,7 +114,7 @@ ROUTER.patch(
 	JWT.verify,
 	Validator.params.channelId,
 	Validator.params.userChannelId,
-	async (req, res) => {
+	async (req, res, next) => {
 		try {
 			const serviceId = req.service.id;
 			const userId = req.user.id;
@@ -134,11 +129,7 @@ ROUTER.patch(
 
 			res.status(HttpStatusCode.Accepted).json({ channel: UPDATED_CHANNEL });
 		} catch (err) {
-			if (err instanceof Exception) res.status(err.httpStatusCode).json(err);
-			else {
-				res.status(HttpStatusCode.InternalServerError).json(err);
-				console.log(err);
-			}
+			next(err);
 		}
 	}
 );
