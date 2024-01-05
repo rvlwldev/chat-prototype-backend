@@ -9,6 +9,11 @@ package-lock.json
 # Prisma
 /migrations/
 
-/File/message
+# File
+/BACKUP/*
+/File/*
 
+# Additional Ignores
+package-lock.json
 
+.gitignore
