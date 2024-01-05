@@ -1,8 +1,43 @@
-const ChannelException = require("../Exception/Chat/ChannelException");
 const prisma = require("../Utils/Prisma");
+
+const ChannelException = require("../Exception/Chat/ChannelException");
 
 const { v4: UUID4 } = require("uuid");
 const UserController = require("./User");
+
+// TODO : SELECT 상수화
+const DEFAULT_SELECT = {
+	user: {
+		id: true,
+		name: true,
+		role: true,
+		lastloggedInAt: true,
+		profileUserImageUrl: true,
+	},
+
+	channel: {
+		id: true,
+		name: true,
+		type: true,
+	},
+
+	userChannel: {
+		userId: true,
+		channel: true,
+		name: true,
+		joinAt: true,
+		readAt: true,
+	},
+
+	parseToChannel: (userChannel) => {
+		return {
+			id: userChannel.channel.id,
+			name: userChannel.name,
+			joinAt: userChannel.joinAt,
+			readAt: userChannel.readAt,
+		};
+	},
+};
 
 // TODO : 모든경로에서 serviceId, channelId 모두 파라미터로 받기, 메소드 재사용/상수화 -> 코드 줄이기
 const ChannelController = {
@@ -10,7 +45,7 @@ const ChannelController = {
 		await prisma.channel
 			.findUnique({
 				where: { ChannelPK: { serviceId: serviceId, id: channelId } },
-				select: { serviceId: true, id: true, name: true, typeCode: true },
+				select: DEFAULT_SELECT.channel,
 			})
 			.then((channel) => {
 				if (!channel) throw new ChannelException.NotFound();
@@ -22,7 +57,7 @@ const ChannelController = {
 		await prisma.userChannel
 			.findMany({
 				where: { serviceId: serviceId, userId: userId },
-				select: { channel: { select: { id: true, name: true, typeCode: true } } },
+				select: { channel: { select: DEFAULT_SELECT.channel } },
 			})
 			.then((userChannels) => {
 				return userChannels
@@ -45,14 +80,8 @@ const ChannelController = {
 					},
 				},
 				select: {
-					user: { select: { serviceId: true, id: true, name: true, role: true } },
-					channel: {
-						select: {
-							id: true,
-							name: true,
-							type: true,
-						},
-					},
+					user: { select: DEFAULT_SELECT.user },
+					channel: { select: DEFAULT_SELECT.channel },
 				},
 			})
 			.then((userChannel) => {
@@ -65,15 +94,8 @@ const ChannelController = {
 			.findMany({
 				where: { serviceId: serviceId, channelId: channelId },
 				select: {
-					channel: true,
-					user: {
-						select: {
-							serviceId: true,
-							id: true,
-							name: true,
-							role: true,
-						},
-					},
+					channel: { select: DEFAULT_SELECT.channel },
+					user: { select: DEFAULT_SELECT.user },
 				},
 			})
 			.then((userChannels) => {
@@ -107,12 +129,7 @@ const ChannelController = {
 				name: name,
 				typeCode: typeCode,
 			},
-			select: {
-				serviceId: true,
-				id: true,
-				name: true,
-				typeCode: true,
-			},
+			select: DEFAULT_SELECT.channel,
 		});
 	},
 
@@ -133,22 +150,8 @@ const ChannelController = {
 				channelId: channelId,
 			},
 			select: {
-				channel: {
-					select: {
-						serviceId: true,
-						id: true,
-						typeCode: true,
-					},
-				},
-				user: {
-					select: {
-						serviceId: true,
-						id: true,
-						name: true,
-						profileUserImageUrl: true,
-						roleCode: true,
-					},
-				},
+				channel: { select: DEFAULT_SELECT.channel },
+				user: { select: DEFAULT_SELECT.user },
 			},
 		});
 	},
@@ -158,9 +161,7 @@ const ChannelController = {
 			where: {
 				serviceId: serviceId,
 				channelId: channelId,
-				userId: {
-					in: USERS.map((user) => user.id),
-				},
+				userId: { in: USERS.map((user) => user.id) },
 			},
 			select: { userId: true },
 		});
@@ -204,13 +205,10 @@ const ChannelController = {
 						channelId: channelId,
 					},
 				},
-				data: { name: name ?? null },
-				select: { name: true, channel: { select: { id: true, typeCode: true } } },
+				data: { name: name || null },
+				select: DEFAULT_SELECT.userChannel,
 			})
-			.then((userChannel) => {
-				userChannel.channel.name = userChannel.name;
-				return userChannel.channel;
-			}),
+			.then((userChannel) => DEFAULT_SELECT.parseToChannel(userChannel)),
 
 	updateUserChannelReadAt: async (serviceId, userId, channelId) =>
 		await prisma.userChannel
@@ -223,25 +221,9 @@ const ChannelController = {
 					},
 				},
 				data: { readAt: new Date() },
-				select: {
-					channel: {
-						select: {
-							id: true,
-						},
-					},
-					userId: true,
-					name: true,
-					readAt: true,
-				},
+				select: DEFAULT_SELECT.userChannel,
 			})
-			.then((userChannel) => {
-				return {
-					...userChannel.channel,
-					userId: userChannel.userId,
-					name: userChannel.name,
-					readAt: userChannel.readAt,
-				};
-			}),
+			.then((userChannel) => DEFAULT_SELECT.parseToChannel(userChannel)),
 
 	// 삭제여부만 변경
 	updateChannelDeleteYn: async (serviceId, channelId, deleteYn = true) =>
