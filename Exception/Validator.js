@@ -1,13 +1,15 @@
 const prisma = require("../Utils/Prisma");
 
+const ServiceController = require("../Controller/Service");
+const UserController = require("../Controller/User");
+
 const ServiceException = require("./Service/ServiceException");
 const UserException = require("./User/UserException");
 const ChannelException = require("./Chat/ChannelException");
 const MessageException = require("./Chat/MessageException");
-const UserController = require("../Controller/User");
-const Exception = require("./Exception");
-const ServiceController = require("../Controller/Service");
+
 const { HttpStatusCode } = require("axios");
+const Exception = require("./Exception");
 
 const Validator = {
 	header: {},
@@ -51,7 +53,29 @@ const Validator = {
 				.catch(() => next(new ChannelException.NotFound())),
 
 		messageId: async (req, res, next) => {
-			next();
+			const catchErr = (err) =>
+				err instanceof Exception ? next(err) : next(new MessageException.NotFound());
+
+			if (!!req.body.parentId)
+				await prisma.message
+					.findUniqueOrThrow({ where: { id: req.body.parentId } })
+					.catch(catchErr);
+
+			await prisma.message
+				.findUniqueOrThrow({ where: { id: req.body.messageId } })
+				.then((message) => {
+					if (!!message.deletedAt) throw new MessageException.Deleted();
+				})
+				.then(() => next())
+				.catch(catchErr);
+		},
+
+		messageText: async (req, res, next) => {
+			if (!!!req.body.text) {
+				next(new MessageException.MissingRequiredValues());
+			} else if (!req.body.text instanceof String) {
+				next(new MessageException.MissingRequiredValues()); // TODO : 이상한 값 예외 추가
+			} else next();
 		},
 	},
 
@@ -86,9 +110,17 @@ const Validator = {
 				.then(() => next())
 				.catch(() => next(new ChannelException.NotAllowed())),
 
-		messageId: async (req, res, next) => {
-			next();
-		},
+		messageId: async (req, res, next) =>
+			await prisma.message
+				.findUniqueOrThrow({ where: { id: req.params.messageId } })
+				.then((message) => {
+					if (!!message.deletedAt) throw new MessageException.Deleted();
+				})
+				.then(() => next())
+				.catch((err) => {
+					if (err instanceof Exception) next(err);
+					else next(new MessageException.NotFound());
+				}),
 	},
 };
 
