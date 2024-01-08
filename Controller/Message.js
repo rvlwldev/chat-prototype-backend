@@ -1,160 +1,118 @@
 const prisma = require("../Utils/Prisma");
 
-const ChannelController = require("./Channel");
+const { v4: UUID4 } = require("uuid");
 
 const MessageException = require("../Exception/Chat/MessageException");
 const ChannelException = require("../Exception/Chat/ChannelException");
+const Exception = require("../Exception/Exception");
 
-// TODO : prisma 에러 코드 상수화 및 구현
-// TODO : MessageException 구현
+const DEFAULT_SELECT = {
+	message: {
+		id: true,
+		userId: true,
+		channelId: true,
+		type: true,
+		text: true,
+		filePath: true,
+		fileName: true,
+		fileSize: true,
+		createdAt: true,
+		deletedAt: true,
+	},
+};
+
+function toDTO(message) {
+	if (message instanceof Array) return message.map((msg) => toDTO(msg));
+
+	delete message.deletedAt;
+	message.filePath || delete message.filePath;
+	message.fileName || delete message.fileName;
+	message.fileSize || delete message.fileSize;
+
+	if (message.type) message.type = message.type.name;
+	if (message.parent) message.parent = toDTO(message.parent);
+	else delete message.parent;
+
+	return message;
+}
 
 const MessageController = {
-	getMessageById: async (SERVICE, channelId, messageId) =>
+	getMessageById: async (serviceId, channelId, messageId) =>
 		await prisma.message
-			.findUnique({
-				where: {
-					service: SERVICE,
-					channel: await ChannelController.getChannelById(SERVICE, channelId),
-					id: messageId,
-				},
-				select: {
-					id: true,
-					userId: true,
-					channel: true,
-					type: true,
-					text: true,
-					createdAt: true,
-					filePath: type == "text",
-					fileName: type == "text",
-					fileSize: type == "text",
-				},
+			.findUniqueOrThrow({
+				where: { serviceId: serviceId, channelId: channelId, id: messageId },
+				select: { ...DEFAULT_SELECT.message, parent: true },
 			})
-			.catch((err) => {
-				if (err.code == "P2001") throw new MessageException.NotFound();
-			}),
+			.then((message) => toDTO(message)),
 
-	getMessages: async (SERVICE, channelId, lastMessageId, order = "asc", limit = 100) => {
-		let where = {
-			service: SERVICE,
-			channel: await ChannelController.getChannelById(channelId),
-		};
+	// TODO : 잘못된파라미터 입력 예외 추가
+	getMessages: async (serviceId, channelId, lastMessageId, order = "asc", limit = 100) => {
+		order = order.toLowerCase();
+		if ((order != "asc" && order != "desc") || isNaN(limit)) throw new Error();
+		limit = parseInt(limit);
 
-		if (!lastMessageId) {
-			let lastMessage = await MessageController.getMessageById(
-				SERVICE,
-				channelId,
-				lastMessageId
-			);
-
-			where.createdAt = {
-				[order === "asc" ? "gt" : "lt"]: lastMessage.createdAt,
-			};
-		}
-
-		return await prisma.message.findMany({
-			where: where,
-			select: {
-				id: true,
-				channel: true,
-				type: true,
-				text: true,
-				filePath: true,
-				fileName: true,
-				fileSize: true,
-				createdAt: true,
-			},
-			take: limit,
-			orderBy: { createdAt: order },
-		});
+		return await MessageController.getMessageById(serviceId, channelId, lastMessageId).then(
+			async (lastMessage) =>
+				await prisma.message
+					.findMany({
+						where: {
+							serviceId: serviceId,
+							channelId: channelId,
+							createdAt: { [order === "asc" ? "gt" : "lt"]: lastMessage.createdAt },
+						},
+						select: {
+							...DEFAULT_SELECT.message,
+							parent: { select: DEFAULT_SELECT.message },
+						},
+						take: limit,
+						orderBy: { createdAt: order },
+					})
+					.then((messages) => toDTO(messages))
+		);
 	},
 
-	saveMessage: async (SERVICE, channelId, text) =>
-		await prisma.message
+	saveTextMessage: async (serviceId, userId, channelId, text, parentId = null) => {
+		return await prisma.message
 			.create({
 				data: {
-					service: SERVICE,
-					channelId: channelId,
-					type: "text",
+					service: { connect: { id: serviceId } },
+					user: { connect: { id: userId } },
+					channel: { connect: { ChannelPK: { serviceId: serviceId, id: channelId } } },
 					text: text,
+					id: UUID4().substring(0, 32),
+					type: { connect: { code: 10 } },
+					...(!!parentId && { parent: { connect: { id: parentId } } }),
 				},
 				select: {
-					id: true,
-					userId: true,
-					channel: true,
-					type: true,
-					text: true,
-					createdAt: true,
+					...DEFAULT_SELECT.message,
+					...(!!parentId && { parent: { select: { ...DEFAULT_SELECT.message } } }),
 				},
 			})
-			.catch((err) => {
-				if (err.code == "P2002") throw new Error();
-				else throw err;
-			}),
-
-	saveMessage: async (SERVICE, channelId, text, parentId) =>
-		await prisma.message
-			.create({
-				data: {
-					service: SERVICE,
-					channelId: channelId,
-					type: "text",
-					text: text,
-					parent: await MessageController.getMessageById(SERVICE, channelId, parentId),
-				},
-				select: {
-					parent: true,
-					id: true,
-					userId: true,
-					channel: true,
-					type: true,
-					text: true,
-					createdAt: true,
-				},
-			})
-			.catch((err) => {
-				if (err.code == "P2002") throw new Error();
-				else throw err;
-			}),
+			.then((message) => toDTO(message));
+	},
 
 	// TODO : 파일 저장
-	saveFileMessage: async (SERVICE, channelId, text, file) => {
+	saveFileMessage: async (serviceId, channelId, text, file) => {
 		const CHANNEL = await prisma.channel
-			.findUnique({
-				where: { service: SERVICE, id: channelId },
-			})
+			.findUnique({ where: { serviceId: serviceId, id: channelId } })
 			.catch((err) => {
 				if (err.code == "P2001") throw new ChannelException.NotFound();
 			});
 	},
 
-	updateMessage: async (SERVICE, channelId, messageId, text) =>
+	updateMessage: async (serviceId, channelId, messageId, text) =>
 		await prisma.message.update({
-			where: {
-				service: SERVICE,
-				channelId: channelId,
-				id: messageId,
-			},
-			data: {
-				text: text,
-				updatedYn: true,
-			},
+			where: { serviceId: serviceId, channelId: channelId, id: messageId },
+			data: { text: text, updatedAt: new Date() },
+			select: DEFAULT_SELECT.message,
 		}),
 
-	deleteMessage: async (SERVICE, channelId, messageId) =>
+	// TODO : 특정 짧은 시간이 지나기 전에 삭제하면 그냥 삭제?
+	// 특정 시간이 지나면 삭제여부만 변경?
+	deleteMessage: async (serviceId, channelId, messageId) =>
 		await prisma.message.update({
-			where: {
-				service: SERVICE,
-				channelId: channelId,
-				id: messageId,
-			},
-			data: {
-				type: "deleted",
-				filePath: null,
-				fileName: null,
-				fileSize: null,
-				text: null,
-				deletedYn: true,
-			},
+			where: { serviceId: serviceId, channelId: channelId, id: messageId },
+			data: { deletedAt: new Date() },
 		}),
 };
 
